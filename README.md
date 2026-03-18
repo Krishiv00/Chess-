@@ -115,6 +115,23 @@ Features:
 
 This enables engine testing, benchmarking, and engine-vs-engine play.
 
+### Supported Core Commands
+
+The engine implements all **mandatory commands defined by the Universal Chess Interface**, ensuring compatibility with standard GUIs.
+
+* `uci` - initialize UCI mode
+* `isready` - synchronization check
+* `ucinewgame` - reset internal state
+* `position` - set up board state (FEN / move list)
+* `go` - start search (supports standard parameters and `perft`)
+* `stop` - halt search
+* `quit` - terminate engine
+
+### Additional Features
+
+* `setoption` - configure engine parameters
+* `flip` - manually flip the side to move (non-standard extension)
+
 ---
 
 # Technical Highlights
