@@ -1,13 +1,8 @@
 #include <iostream>
-#include <string>
 #include <vector>
 #include <functional>
-#include <cassert>
 
 #include "Engine/Chess.hpp"
-
-static int s_Passed = 0;
-static int s_Failed = 0;
 
 struct TestCase {
     std::string name;
@@ -17,63 +12,8 @@ struct TestCase {
 static std::vector<TestCase> s_Tests;
 static std::vector<std::string> s_FailedTests;
 
-static void RegisterTest(const std::string& name, std::function<bool()> fn) {
-    s_Tests.push_back({name, fn});
-}
-
-#pragma region Run Tests
-
-static void RunTests() {
-    const size_t total = s_Tests.size();
-
-    std::cout << "========================================" << std::endl;
-    std::cout << "Running " << total << " test cases" << std::endl;
-    std::cout << "========================================" << std::endl << std::endl;
-
-    for (const auto& t : s_Tests) {
-        bool ok = false;
-
-        try {
-            ok = t.fn();
-        }
-        catch (const std::exception& e) {
-            std::cerr << "[EXCEPTION] " << t.name << ": "
-                << e.what() << std::endl;
-        }
-        catch (...) {
-            std::cerr << "[EXCEPTION] " << t.name
-                << ": unknown" << std::endl;
-        }
-
-        if (ok) {
-            std::cout << "[PASS] " << t.name << std::endl;
-            ++s_Passed;
-        } else {
-            std::cout << "[FAIL] " << t.name << std::endl;
-            ++s_Failed;
-            s_FailedTests.push_back(t.name);
-        }
-    }
-
-    std::cout << std::endl << "========================================" << std::endl;
-    std::cout << "TEST SUMMARY" << std::endl;
-    std::cout << "========================================" << std::endl;
-
-    std::cout << "Total Tests : " << total << std::endl;
-    std::cout << "Passed : " << s_Passed << std::endl;
-    std::cout << "Failed : " << s_Failed << std::endl;
-
-    if (!s_FailedTests.empty()) {
-        std::cout << std::endl << "Failed Test Cases:" << std::endl;
-        std::cout << "========================================" << std::endl;
-
-        for (const auto& name : s_FailedTests) {
-            std::cout << " - " << name << std::endl;
-        }
-    }
-
-    std::cout << "========================================" << std::endl;
-}
+static int s_Passed = 0;
+static int s_Failed = 0;
 
 #pragma region Helpers
 
@@ -87,6 +27,7 @@ static unsigned int countCheckMoves(Chess::Board& board, Chess::PieceColor side)
     for (unsigned int i = 0; i < n; ++i) {
         if (Chess::HasFlag(moves[i].Flag, Chess::MoveFlag::Check)) ++checks;
     }
+    
     return checks;
 }
 
@@ -134,163 +75,144 @@ static uint64_t perft(Chess::Board board, Chess::PieceColor side, int depth) {
 }
 
 // Load a FEN and return the side to move.
-static Chess::PieceColor load(Chess::Board& board, const char* fen) {
-    return board.LoadFromFen(std::string(fen));
+static Chess::PieceColor load(Chess::Board& board, const std::string& fen) {
+    return board.LoadFromFen(fen);
 }
 
 #pragma region Register Tests
+
+static void RegisterTest(const std::string& name, std::function<bool()> fn) {
+    s_Tests.push_back({name, fn});
+}
+
+static void RegisterPerftTest(const std::string& name, const std::string& fen, const std::vector<uint64_t>& nodes) {
+    for (int i = 0; i < nodes.size(); ++i) {
+        const int depth = i + 1;
+        const uint64_t expected = nodes[i];
+
+        RegisterTest("Perft: " + name + " d" + std::to_string(depth),
+            [fen, depth, expected]() {
+                Chess::Board b; auto s = load(b, fen);
+                return perft(b, s, depth) == expected;
+            }
+        );
+    }
+}
 
 static void RegisterTests() {
     // -----------------------------------------------------------------------
     // Position 1: Starting position
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Starting position d1", []() {
-        Chess::Board b; auto s = load(b, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        return perft(b, s, 1) == 20;
-    });
-    RegisterTest("Perft: Starting position d2", []() {
-        Chess::Board b; auto s = load(b, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        return perft(b, s, 2) == 400;
-    });
-    RegisterTest("Perft: Starting position d3", []() {
-        Chess::Board b; auto s = load(b, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        return perft(b, s, 3) == 8902;
-    });
-    RegisterTest("Perft: Starting position d4", []() {
-        Chess::Board b; auto s = load(b, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        return perft(b, s, 4) == 197281;
-    });
-    RegisterTest("Perft: Starting position d5", []() {
-        Chess::Board b; auto s = load(b, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-        return perft(b, s, 5) == 4865609;
-    });
+    RegisterPerftTest(
+        "Position 1", Chess::DefaultFEN,
+        {20, 400, 8902, 197281, 4865609}
+    );
 
     // -----------------------------------------------------------------------
     // Position 2: Kiwipete — stress tests castling, en-passant, promotions
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Kiwipete d1", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-        return perft(b, s, 1) == 48;
-    });
-    RegisterTest("Perft: Kiwipete d2", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-        return perft(b, s, 2) == 2039;
-    });
-    RegisterTest("Perft: Kiwipete d3", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-        return perft(b, s, 3) == 97862;
-    });
-    RegisterTest("Perft: Kiwipete d4", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-        return perft(b, s, 4) == 4085603;
-    });
+    RegisterPerftTest(
+        "Position 2", "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        {48, 2039, 97862, 4085603}
+    );
 
     // -----------------------------------------------------------------------
     // Position 3: Many promotions and en-passant
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Position 3 d1", []() {
-        Chess::Board b; auto s = load(b, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
-        return perft(b, s, 1) == 14;
-    });
-    RegisterTest("Perft: Position 3 d2", []() {
-        Chess::Board b; auto s = load(b, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
-        return perft(b, s, 2) == 191;
-    });
-    RegisterTest("Perft: Position 3 d3", []() {
-        Chess::Board b; auto s = load(b, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
-        return perft(b, s, 3) == 2812;
-    });
-    RegisterTest("Perft: Position 3 d4", []() {
-        Chess::Board b; auto s = load(b, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
-        return perft(b, s, 4) == 43238;
-    });
-    RegisterTest("Perft: Position 3 d5", []() {
-        Chess::Board b; auto s = load(b, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
-        return perft(b, s, 5) == 674624;
-    });
+    RegisterPerftTest(
+        "Position 3", "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        {14, 191, 2812, 43238, 674624}
+    );
 
     // -----------------------------------------------------------------------
     // Position 4: Castling rights edge cases
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Position 4 d1", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R b KQkq - 0 1");
-        return perft(b, s, 1) == 27;
-    });
-    RegisterTest("Perft: Position 4 d2", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R b KQkq - 0 1");
-        return perft(b, s, 2) == 725;
-    });
-    RegisterTest("Perft: Position 4 d3", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R b KQkq - 0 1");
-        return perft(b, s, 3) == 19209;
-    });
-    RegisterTest("Perft: Position 4 d4", []() {
-        Chess::Board b; auto s = load(b, "r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R b KQkq - 0 1");
-        return perft(b, s, 4) == 515398;
-    });
+    RegisterPerftTest(
+        "Position 4", "r3k2r/Pppp1ppp/1b6/8/8/1B6/pPPP1PPP/R3K2R b KQkq - 0 1",
+        {27, 725, 19209, 515398}
+    );
 
     // -----------------------------------------------------------------------
     // Position 5: Pins and checks
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Position 5 d1", []() {
-        Chess::Board b; auto s = load(b, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-        return perft(b, s, 1) == 44;
-    });
-    RegisterTest("Perft: Position 5 d2", []() {
-        Chess::Board b; auto s = load(b, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-        return perft(b, s, 2) == 1486;
-    });
-    RegisterTest("Perft: Position 5 d3", []() {
-        Chess::Board b; auto s = load(b, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-        return perft(b, s, 3) == 62379;
-    });
-    RegisterTest("Perft: Position 5 d4", []() {
-        Chess::Board b; auto s = load(b, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-        return perft(b, s, 4) == 2103487;
-    });
+    RegisterPerftTest(
+        "Position 5", "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+        {44, 1486, 62379, 2103487}
+    );
 
     // -----------------------------------------------------------------------
     // Position 6: Complex middle game
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Position 6 d1", []() {
-        Chess::Board b; auto s = load(b, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        return perft(b, s, 1) == 46;
-    });
-    RegisterTest("Perft: Position 6 d2", []() {
-        Chess::Board b; auto s = load(b, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        return perft(b, s, 2) == 2079;
-    });
-    RegisterTest("Perft: Position 6 d3", []() {
-        Chess::Board b; auto s = load(b, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        return perft(b, s, 3) == 89890;
-    });
-    RegisterTest("Perft: Position 6 d4", []() {
-        Chess::Board b; auto s = load(b, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
-        return perft(b, s, 4) == 3894594;
-    });
+    RegisterPerftTest(
+        "Position 6", "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+        {46, 2079, 89890, 3894594}
+    );
 
     // -----------------------------------------------------------------------
     // Position 7: Pins and check blocks
     // -----------------------------------------------------------------------
-    RegisterTest("Perft: Position 7 d1", []() {
-        Chess::Board b; auto s = load(b, "r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w - - 0 1");
-        return perft(b, s, 1) == 7;
-    });
+    RegisterPerftTest(
+        "Position 7", "r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w - - 0 1",
+        {7, 317, 12363, 501910}
+    );
 
-    RegisterTest("Perft: Position 7 d2", []() {
-        Chess::Board b; auto s = load(b, "r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w - - 0 1");
-        return perft(b, s, 2) == 317;
-    });
+    // -----------------------------------------------------------------------
+    // Other tricky positions:
+    // -----------------------------------------------------------------------
+    RegisterPerftTest(
+        "Position 8", "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 1 1",
+        {14, 191, 2812, 43238}
+    );
 
-    RegisterTest("Perft: Position 7 d3", []() {
-        Chess::Board b; auto s = load(b, "r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w - - 0 1");
-        return perft(b, s, 3) == 12363;
-    });
+    RegisterPerftTest(
+        "Position 9", "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 1 1",
+        {48, 2039, 97862, 4085603}
+    );
 
-    RegisterTest("Perft: Position 7 d4", []() {
-        Chess::Board b; auto s = load(b, "r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w - - 0 1");
-        return perft(b, s, 4) == 501910;
-    });
+    RegisterPerftTest(
+        "Position 10", "r3k2r/pp3pp1/PN1pr1p1/4p1P1/4P3/3P4/P1P2PP1/R3K2R w KQkq - 4 4",
+        {34, 751, 23544, 508418, 15587335}
+    );
+
+    RegisterPerftTest(
+        "Position 11", "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 1 1",
+        {46, 2079, 89890, 3894594}
+    );
+
+    RegisterPerftTest(
+        "Position 12", "r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1",
+        {44, 1494, 50509, 1720476}
+    );
+
+    RegisterPerftTest(
+        "Position 13", "8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1",
+        {29, 165, 5160, 31961}
+    );
+
+    RegisterPerftTest(
+        "Position 14", "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1",
+        {37, 183, 6559, 23527}
+    );
+
+    RegisterPerftTest(
+        "Position 15", "r1bq2r1/1pppkppp/1b3n2/pP1PP3/2n5/2P5/P3QPPP/RNB1K2R w KQ a6 0 1",
+        {38, 1194, 41006, 1280017}
+    );
+
+    RegisterPerftTest(
+        "Position 16", "4k2r/1pp1n2p/6N1/1K1P2r1/4P3/P5P1/1Pp4P/R7 w k - 0 6",
+        {26, 736, 16748, 491364}
+    );
+
+    RegisterPerftTest(
+        "Position 17", "1Bb3BN/R2Pk2r/1Q5B/4q2R/2bN4/4Q1BK/1p6/1bq1R1rb w - - 0 1",
+        {81, 2714, 184214, 6871272}
+    );
+
+    RegisterPerftTest(
+        "Position 18", "8/k1P5/8/1K6/8/8/8/8 w - - 0 1",
+        {10, 25, 268, 926, 10857, 43261}
+    );
 
     // -----------------------------------------------------------------------
     // Knight direct check
@@ -707,6 +629,60 @@ static void RegisterTests() {
         unsigned int n = countMoves(b, s);
         return n <= Chess::MaxLegalMoves;
     });
+}
+
+#pragma region Run Tests
+
+static void RunTests() {
+    const size_t total = s_Tests.size();
+
+    std::cout << "========================================" << std::endl;
+    std::cout << "Running " << total << " test cases" << std::endl;
+    std::cout << "========================================" << std::endl << std::endl;
+
+    for (const auto& t : s_Tests) {
+        bool ok = false;
+
+        try {
+            ok = t.fn();
+        }
+        catch (const std::exception& e) {
+            std::cerr << "[EXCEPTION] " << t.name << ": "
+                << e.what() << std::endl;
+        }
+        catch (...) {
+            std::cerr << "[EXCEPTION] " << t.name
+                << ": unknown" << std::endl;
+        }
+
+        if (ok) {
+            std::cout << "[PASS] " << t.name << std::endl;
+            ++s_Passed;
+        } else {
+            std::cout << "[FAIL] " << t.name << std::endl;
+            ++s_Failed;
+            s_FailedTests.push_back(t.name);
+        }
+    }
+
+    std::cout << std::endl << "========================================" << std::endl;
+    std::cout << "TEST SUMMARY" << std::endl;
+    std::cout << "========================================" << std::endl;
+
+    std::cout << "Total Tests : " << total << std::endl;
+    std::cout << "Passed : " << s_Passed << std::endl;
+    std::cout << "Failed : " << s_Failed << std::endl;
+
+    if (!s_FailedTests.empty()) {
+        std::cout << std::endl << "Failed Test Cases:" << std::endl;
+        std::cout << "========================================" << std::endl;
+
+        for (const auto& name : s_FailedTests) {
+            std::cout << " - " << name << std::endl;
+        }
+    }
+
+    std::cout << "========================================" << std::endl;
 }
 
 int main() {

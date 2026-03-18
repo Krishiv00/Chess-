@@ -1811,12 +1811,12 @@ void Board::generateMoves(
                     const uint64_t epMask = IndexToMask(m_EnPassantSquare) | IndexToMask(capturedSq);
 
                     // must capture checker or block check
-                    if ((epMask & checkMask) == 0ull)continue;
+                    if ((epMask & checkMask) == 0ull) continue;
 
                     // pin restriction only
                     if ((pins.Pinned & sqMask) && !(pins.Rays[sq] & IndexToMask(m_EnPassantSquare))) continue;
 
-                    const uint64_t occAfterEP = occ & ~sqMask & ~IndexToMask(capturedSq);
+                    const uint64_t occAfterEP = (occ & ~sqMask & ~IndexToMask(capturedSq)) | IndexToMask(m_EnPassantSquare);
                     const uint64_t enemyRQ = m_PieceMask[enmOff + 3] | m_PieceMask[enmOff + 4];
 
                     const int kingSq = MaskToIndex(m_PieceMask[myOff + 5]);
