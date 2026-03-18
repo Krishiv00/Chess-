@@ -1,0 +1,23 @@
+#include "GUI/Launcher.hpp"
+
+int main(int, char**) {
+    Launcher launcher({
+        .WindowSize = 850u,
+        .AspectRatio = 1.125f,
+        .Fps = 60u,
+        .WindowTitle = "Chess",
+        .WindowStyle = sf::Style::Default
+    });
+
+    if (!launcher.LoadResources("Resources/")) [[unlikely]] {
+        return 1;
+    }
+
+    while (launcher.isRunning()) {
+        launcher.HandleEvents();
+        launcher.Update();
+        launcher.Render();
+    }
+
+    return 0;
+}
