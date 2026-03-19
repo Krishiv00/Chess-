@@ -52,6 +52,7 @@ private:
     std::thread m_PonderThread;
 
 public:
+    UciHandler();
     ~UciHandler();
 
     void HandleCommand(const std::string& command);

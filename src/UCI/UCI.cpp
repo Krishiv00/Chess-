@@ -239,6 +239,10 @@ void UciHandler::command_debug() {
 
 // --------- Methods ---------
 
+UciHandler::UciHandler() {
+    m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
+}
+
 UciHandler::~UciHandler() {
     stopCurrentSearch();
 }
