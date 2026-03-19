@@ -43,6 +43,7 @@ private:
     void command_go(const std::string& command);
     void command_setoption(const std::string& command);
     void command_flip();
+    void command_debug();
 
     Chess::Board m_Board;
     Chess::PieceColor m_SideToMove;

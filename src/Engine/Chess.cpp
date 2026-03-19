@@ -992,7 +992,7 @@ PieceColor Board::LoadFromFen(const std::string& fen) {
 }
 
 std::string Chess::Board::GetFen(PieceColor sideToMove) const {
-    constexpr char Sep = ' ';
+    const char sep = ' ';
 
     std::string fen;
     fen.reserve(80); // average length of a fen string
@@ -1015,21 +1015,7 @@ std::string Chess::Board::GetFen(PieceColor sideToMove) const {
                     empty = 0;
                 }
 
-                char c;
-
-                switch (p.Type) {
-                case PieceType::Pawn: c = 'p'; break;
-                case PieceType::Bishop: c = 'b'; break;
-                case PieceType::Knight: c = 'n'; break;
-                case PieceType::Rook: c = 'r'; break;
-                case PieceType::Queen: c = 'q'; break;
-                case PieceType::King: c = 'k'; break;
-                default: continue;
-                }
-
-                if (p.Color == PieceColor::White) c = std::toupper(c);
-
-                fen.push_back(c);
+                fen.push_back(PieceToChar(p));
             }
 
             if (empty) fen.push_back('0' + empty);
@@ -1038,11 +1024,11 @@ std::string Chess::Board::GetFen(PieceColor sideToMove) const {
     }
 
     // side to move
-    fen.push_back(Sep);
+    fen.push_back(sep);
     fen.push_back(sideToMove == PieceColor::White ? 'w' : 'b');
 
     /* Serialize Castling rights */ {
-        fen.push_back(Sep);
+        fen.push_back(sep);
 
         if (!m_CastlingRights) {
             fen.push_back('-');
@@ -1055,7 +1041,7 @@ std::string Chess::Board::GetFen(PieceColor sideToMove) const {
     }
 
     /* Serialize En-passant square */ {
-        fen.push_back(Sep);
+        fen.push_back(sep);
 
         if (m_EnPassantSquare == NullPos) {
             fen.push_back('-');
@@ -1066,11 +1052,11 @@ std::string Chess::Board::GetFen(PieceColor sideToMove) const {
     }
 
     // half move clock
-    fen.push_back(Sep);
+    fen.push_back(sep);
     fen += std::to_string(m_HalfMoveClock);
 
     // full move count
-    fen.push_back(Sep);
+    fen.push_back(sep);
     fen += std::to_string(GameContext::MoveCount);
 
     return fen;
@@ -2739,7 +2725,7 @@ float Board::GetConfidence(PieceColor sideToMove, int thinkTimeMS) const {
 
     do {
         const int score = negamax(depth, -INF, INF, sideToMove);
-    
+
         if (score != SearchCancelScore && score != -SearchCancelScore) {
             deepestScore = score;
         }
@@ -3471,6 +3457,71 @@ void Board::Perft(int depth, PieceColor sideToMove) {
     }
 
     std::cout << std::endl << "Nodes searched: " << totalNodes << std::endl;
+}
+
+#pragma region Debug
+
+uint64_t Board::getCheckers(PieceColor friendlyColor) const {
+    const int enemyOff = (friendlyColor == PieceColor::White) * 6;
+    const bool isBlack = friendlyColor == PieceColor::Black;
+    const int kingSq = MaskToIndex(m_PieceMask[Utils::PieceToBitIdx(PieceType::King, friendlyColor)]);
+
+    uint64_t checkers = 0ull;
+
+    const uint64_t occ = GetOccupancyMap();
+
+    // sliders
+    const uint64_t enemyQueens = m_PieceMask[enemyOff + 4];
+    const uint64_t enemyRooksQueens = m_PieceMask[enemyOff + 3] | enemyQueens;
+    const uint64_t enemyBishopsQueens = m_PieceMask[enemyOff + 1] | enemyQueens;
+
+    checkers |= MagicBitboard::OrthogonalAttacks(kingSq, occ) & enemyRooksQueens;
+    checkers |= MagicBitboard::DiagonalAttacks(kingSq, occ) & enemyBishopsQueens;
+    checkers |= LUTs::KnightAttacks[kingSq] & m_PieceMask[enemyOff + 2];
+    checkers |= LUTs::PawnAttacks[isBlack][kingSq] & m_PieceMask[enemyOff];
+
+    return checkers;
+}
+
+void Board::PrintBoard(PieceColor sideToMove) {
+    const char* rankSep = "+---+---+---+---+---+---+---+---+";
+    const char fileSep = '|';
+
+    std::cout << std::endl;
+
+    for (int rank = 0; rank < Ranks; ++rank) {
+        std::cout << rankSep << std::endl;
+
+        for (int file = 0; file < Files; ++file) {
+            std::cout << fileSep;
+
+            const Piece pieceAtPos = m_Mailbox[To2DIndex(rank, file)];
+            const char c = pieceAtPos.Type == PieceType::None ? ' ' : PieceToChar(pieceAtPos);
+
+            std::cout << ' ' << c << ' ';
+        }
+
+        std::cout << fileSep << ' ' << (8 - rank) << std::endl;
+    }
+
+    std::cout << rankSep << std::endl;
+
+    std::cout << "  a   b   c   d   e   f   g   h" << std::endl << std::endl;
+
+    std::cout << "Fen: " << GetFen(sideToMove) << std::endl;
+    std::cout << "Key: " << std::uppercase << std::hex << m_Hash << std::nouppercase << std::dec << std::endl;
+    std::cout << "Checkers: ";
+
+    for (uint64_t tmp = getCheckers(sideToMove); tmp; tmp &= tmp - 1) {
+        const int sq = MaskToIndex(tmp);
+
+        const char file = 'a' + ToFile(sq);
+        const char rank = '1' + (7 - ToRank(sq));
+
+        std::cout << file << rank << " ";
+    }
+
+    std::cout << std::endl;
 }
 
 uint16_t Chess::Board::GetMoveCount() const noexcept {

@@ -196,6 +196,20 @@ namespace Chess {
         return uci;
     }
 
+    [[nodiscard]]
+    constexpr inline char PieceToChar(Piece p) noexcept {
+        char c;
+
+        if (p.Type == PieceType::Pawn) c = 'p';
+        else if (p.Type == PieceType::Bishop) c = 'b';
+        else if (p.Type == PieceType::Knight) c = 'n';
+        else if (p.Type == PieceType::Rook) c = 'r';
+        else if (p.Type == PieceType::Queen) c = 'q';
+        else c = 'k';
+
+        return p.Color == PieceColor::White ? std::toupper(c) : c;
+    }
+
     class Board {
     private:
         // required to run tests
@@ -218,6 +232,9 @@ namespace Chess {
 
         [[nodiscard]]
         uint64_t getCheckMask(PieceColor friendlyColor) const;
+
+        [[nodiscard]]
+        uint64_t getCheckers(PieceColor friendlyColor) const;
 
         [[nodiscard]]
         uint64_t getAttackedSquares(PieceColor attacker, uint64_t occ) const;
@@ -350,6 +367,8 @@ namespace Chess {
 
         void Perft(int depth, PieceColor sideToMove);
 
+        void PrintBoard(PieceColor sideToMove);
+
         void CancelSearch();
 
         [[nodiscard]]
@@ -381,7 +400,7 @@ namespace Chess {
 
         [[nodiscard]]
         uint16_t GetMoveCount() const noexcept;
-        
+
         [[nodiscard]]
         uint64_t GetOccupancyMap(PieceColor color) const noexcept;
 
@@ -393,7 +412,7 @@ namespace Chess {
         void SetHashSize(unsigned int size) const;
 
         void ClearHash() const;
-        
+
         [[nodiscard]]
         unsigned int GetHashSize() const noexcept;
 

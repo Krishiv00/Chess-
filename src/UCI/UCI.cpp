@@ -232,6 +232,10 @@ void UciHandler::command_flip() {
     m_SideToMove = Chess::InvertColor(m_SideToMove);
 }
 
+void UciHandler::command_debug() {
+    m_Board.PrintBoard(m_SideToMove);
+}
+
 // --------- Methods ---------
 
 UciHandler::~UciHandler() {
@@ -269,6 +273,10 @@ void UciHandler::HandleCommand(const std::string& command) {
 
     else if (command == "flip") {
         command_flip();
+    }
+
+    else if (command == "d") {
+        command_debug();
     }
 
     else {
