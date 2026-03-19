@@ -2721,8 +2721,6 @@ int Board::see(Move move) const {
 float Board::GetConfidence(PieceColor sideToMove, int thinkTimeMS) const {
     SearchContext::BeginNew(m_Hash);
 
-    int bestScore = -INF;
-
     // cancel search after time limit expires
     std::thread timerThread([thinkTimeMS]() {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(thinkTimeMS);
@@ -2735,17 +2733,23 @@ float Board::GetConfidence(PieceColor sideToMove, int thinkTimeMS) const {
         SearchContext::Cancelled.store(true, std::memory_order_relaxed);
     });
 
-    for (int depth = 1; !SearchContext::Cancelled.load(std::memory_order_relaxed); ++depth) {
-        const int score = negamax(depth, -INF, INF, sideToMove);
+    int deepestScore = 0;
 
-        if (score != SearchCancelScore && score != -SearchCancelScore && score > bestScore) {
-            bestScore = score;
+    int depth = 1;
+
+    do {
+        const int score = negamax(depth, -INF, INF, sideToMove);
+    
+        if (score != SearchCancelScore && score != -SearchCancelScore) {
+            deepestScore = score;
         }
-    }
+
+        ++depth;
+    } while (!SearchContext::Cancelled.load(std::memory_order_relaxed));
 
     timerThread.join();
 
-    return CentripawnToUniform(sideToMove == PieceColor::White ? bestScore : -bestScore);
+    return CentripawnToUniform(sideToMove == PieceColor::White ? deepestScore : -deepestScore);
 }
 
 #pragma region Move Ranking
