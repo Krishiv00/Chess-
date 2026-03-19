@@ -337,7 +337,7 @@ void Application::pollEngineMove() {
 }
 
 void Application::updateEvaluation() {
-    m_LatestEvaluation = m_Board.GetConfidence(m_SideToMove, 6);
+    m_LatestEvaluation = m_Board.GetConfidence(m_SideToMove, 12);
 }
 
 void Application::doMove(Chess::Move move, bool animate) {

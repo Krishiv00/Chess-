@@ -2725,14 +2725,11 @@ float Board::GetConfidence(PieceColor sideToMove, int thinkTimeMS) const {
 
     // cancel search after time limit expires
     std::thread timerThread([thinkTimeMS]() {
-        const int checkIntervalMS = 2;
-        int elapsed = 0;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(thinkTimeMS);
 
-        while (elapsed < thinkTimeMS) {
+        while (std::chrono::steady_clock::now() < deadline) {
             if (SearchContext::Cancelled.load(std::memory_order_relaxed)) return;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(checkIntervalMS));
-            elapsed += checkIntervalMS;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
 
         SearchContext::Cancelled.store(true, std::memory_order_relaxed);
@@ -3228,14 +3225,11 @@ Move Board::FindBestMoveByTime(PieceColor sideToMove, int thinkTimeMS, bool useO
 
     // cancel search after time limit expires
     std::thread timerThread([thinkTimeMS]() {
-        const int checkIntervalMS = 2;
-        int elapsed = 0;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(thinkTimeMS);
 
-        while (elapsed < thinkTimeMS) {
+        while (std::chrono::steady_clock::now() < deadline) {
             if (SearchContext::Cancelled.load(std::memory_order_relaxed)) return;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(checkIntervalMS));
-            elapsed += checkIntervalMS;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
 
         SearchContext::Cancelled.store(true, std::memory_order_relaxed);
