@@ -1463,6 +1463,10 @@ void Board::DoMove(Move move) {
     ++GameContext::MoveCount;
 }
 
+void Chess::Board::FlipSideToMove() {
+    m_Hash = ZobristHasher::HashSideToMove(m_Hash);
+}
+
 #pragma region Move Generation
 
 void Chess::Board::scanPins(int kingPos, uint64_t pinners, uint64_t friendlyOcc, PinMasks& result) const {

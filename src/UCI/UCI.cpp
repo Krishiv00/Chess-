@@ -230,6 +230,7 @@ void UciHandler::command_setoption(const std::string& command) {
 
 void UciHandler::command_flip() {
     m_SideToMove = Chess::InvertColor(m_SideToMove);
+    m_Board.FlipSideToMove();
 }
 
 void UciHandler::command_debug() {

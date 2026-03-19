@@ -364,6 +364,8 @@ namespace Chess {
         std::string GetFen(PieceColor sideToMove) const;
 
         void DoMove(Move move);
+        
+        void FlipSideToMove();
 
         void Perft(int depth, PieceColor sideToMove);
 
