@@ -47,6 +47,7 @@ private:
 
     Chess::Board m_Board;
     Chess::PieceColor m_SideToMove;
+    Chess::PieceColor m_LastEngineColor;
 
     std::thread m_SearchThread;
     std::thread m_PonderThread;

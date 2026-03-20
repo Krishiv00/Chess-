@@ -69,6 +69,7 @@ void UciHandler::command_uci() const {
         << "option name Minimum Thinking Time type spin default " << Options::MinimumThinkingTime << " min 0 max 5000" << std::endl
         << "option name Ponder type check default " << (Options::Ponder ? "true" : "false") << std::endl
         << "option name OwnBook type check default " << (Options::OwnBook ? "true" : "false") << std::endl
+        << "option name CatchAll type check default " << (m_Board.GetCatchAll() ? "true" : "false") << std::endl
         // Complete Handshake
         << "uciok" << std::endl;
 }
@@ -127,6 +128,18 @@ void UciHandler::command_position(const std::string& command) {
 
 void UciHandler::command_go(const std::string& command) {
     stopCurrentSearch();
+
+    m_Board.SetEngineColor(m_SideToMove);
+
+    // clear hash if engine color has changed this game
+    // since hash values are misleading now
+    if (m_Board.GetCatchAll()) {
+        if (m_SideToMove != m_LastEngineColor) {
+            m_Board.ClearHash();
+        }
+    
+        m_LastEngineColor = m_SideToMove;
+    }
 
     m_SearchThread = std::thread([this, command]() -> void {
         const GoParams params = parseGoParams(command);
@@ -209,6 +222,11 @@ void UciHandler::command_setoption(const std::string& command) {
     
     else if (name == "OwnBook") {
         Options::OwnBook = value == "true";
+    }
+
+    else if (name == "CatchAll") {
+        m_Board.SetCatchAll(value == "true");
+        m_Board.ClearHash();
     }
     
     else if (name == "Clear Hash") {

@@ -415,8 +415,15 @@ namespace Chess {
 
         void ClearHash() const;
 
+        void SetCatchAll(bool value) const;
+
+        void SetEngineColor(PieceColor color) const;
+
         [[nodiscard]]
         unsigned int GetHashSize() const noexcept;
+
+        [[nodiscard]]
+        bool GetCatchAll() const noexcept;
 
         [[nodiscard]]
         inline uint8_t GetCastlingRights() const noexcept {

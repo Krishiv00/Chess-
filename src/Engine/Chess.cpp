@@ -652,6 +652,9 @@ struct SearchContext {
     static inline uint64_t PositionHistory[MaxPly];
     static inline Move killerMoves[MaxPly][2];
     static inline Move ExcludedMove[MaxPly];
+
+    static inline bool CatchAllMode{false};
+    static inline PieceColor EnginePlayer;
 };
 
 #pragma region Scoring
@@ -3023,12 +3026,20 @@ int Board::negamax(int depth, int alpha, int beta, PieceColor sideToMove, int pl
 
     if (numMoves == 0u) {
         if (SearchContext::ExcludedMove[ply]) {
-            // singular search: no moves means TT move dominates
             return alpha;
         }
 
         if (inCheck) {
-            // prefer shorter mates
+            if (
+                SearchContext::CatchAllMode &&
+                sideToMove != SearchContext::EnginePlayer
+            ) {
+                // If the engine is delivering checkmate
+                if (const int oppPiecesRemaining = NumBitsOn(GetOccupancyMap(sideToMove)) - 1) {
+                    return 500 + (oppPiecesRemaining * 100);
+                }
+            }
+
             return ply - INF;
         }
 
@@ -3530,4 +3541,16 @@ void Board::PrintBoard(PieceColor sideToMove) {
 
 uint16_t Chess::Board::GetMoveCount() const noexcept {
     return GameContext::MoveCount;
+}
+
+void Chess::Board::SetCatchAll(bool value) const {
+    SearchContext::CatchAllMode = value;
+}
+
+bool Chess::Board::GetCatchAll() const noexcept {
+    return SearchContext::CatchAllMode;
+}
+
+void Chess::Board::SetEngineColor(PieceColor color) const {
+    SearchContext::EnginePlayer = color;
 }

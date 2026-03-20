@@ -52,9 +52,10 @@ Application::Application() {
     Chess::Init();
 
     m_Board.SetHashSize(128);
+    m_Board.SetCatchAll(true);
 
     m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
-    updateEvaluation();
+    m_LatestEvaluation = 0.5f;
 }
 
 void Application::startNewGame() {
@@ -62,7 +63,7 @@ void Application::startNewGame() {
     if (m_PonderThread.joinable()) m_PonderThread.join();
     if (m_SearchThread.joinable()) m_SearchThread.join();
     m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
-    updateEvaluation();
+    m_LatestEvaluation = 0.5f;
     m_GameOver = false;
     m_Flipped = false;
     m_LastMove = Chess::Move();
@@ -254,9 +255,11 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
             if (m_PonderThread.joinable()) m_PonderThread.join();
             if (m_SearchThread.joinable()) m_SearchThread.join();
             m_SideToMove = m_Board.LoadFromFen(sf::Clipboard::getString());
+            m_Board.SetEngineColor(m_SideToMove);
             updateEvaluation();
             m_GameOver = m_Flipped = false;
             m_LastMove = Chess::Move();
+            m_Board.ClearHash();
         }
     }
 
@@ -324,6 +327,18 @@ void Application::pollEngineMove() {
     if (m_SearchThread.joinable()) m_SearchThread.join();
 
     m_EngineThinking = true;
+
+    m_Board.SetEngineColor(m_SideToMove);
+
+    // clear hash if engine color has changed this game
+    // since hash values are misleading now
+    if (m_Board.GetCatchAll()) {
+        if (m_SideToMove != m_LastEngineColor) {
+            m_Board.ClearHash();
+        }
+
+        m_LastEngineColor = m_SideToMove;
+    }
 
     Chess::Board searchBoard = m_Board;
     Chess::PieceColor searchSideToMove = m_SideToMove;

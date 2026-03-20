@@ -78,6 +78,7 @@ private:
     Chess::Board m_Board;
     Chess::Move m_LastMove;
     Chess::PieceColor m_SideToMove;
+    Chess::PieceColor m_LastEngineColor;
 
     // Invariant: only valid when not equal to `Chess::NullPos`
     uint8_t m_SelectedPiece{Chess::NullPos};
