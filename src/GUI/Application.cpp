@@ -52,7 +52,7 @@ Application::Application() {
     Chess::Init();
 
     m_Board.SetHashSize(128);
-    m_Board.SetCatchAll(true);
+    m_Board.SetCatchAll(false);
 
     m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
     m_LatestEvaluation = 0.5f;
@@ -344,7 +344,7 @@ void Application::pollEngineMove() {
     Chess::PieceColor searchSideToMove = m_SideToMove;
 
     m_SearchThread = std::thread([searchBoard, searchSideToMove, this]() -> void {
-        const Chess::Move bestMove = searchBoard.FindBestMoveByTime(searchSideToMove, 1000);
+        const Chess::Move bestMove = searchBoard.FindBestMoveByTime(searchSideToMove, 750);
 
         m_PendingEngineMove = bestMove;
         m_EngineThinking = false;
