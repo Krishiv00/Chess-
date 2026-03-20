@@ -137,12 +137,20 @@ void UciHandler::command_go(const std::string& command) {
         if (m_SideToMove != m_LastEngineColor) {
             m_Board.ClearHash();
         }
-    
+
         m_LastEngineColor = m_SideToMove;
     }
 
     m_SearchThread = std::thread([this, command]() -> void {
         const GoParams params = parseGoParams(command);
+
+        if (
+            m_Board.GetCatchAll() &&
+            (m_SideToMove == Chess::PieceColor::Black ? params.Btime : params.Wtime) <= 10000
+        ) {
+            m_Board.SetCatchAll(false);
+            m_Board.ClearHash();
+        }
 
         if (params.Perft) {
             m_Board.Perft(params.Depth, m_SideToMove); return;
@@ -161,15 +169,15 @@ void UciHandler::command_go(const std::string& command) {
         std::cout << "bestmove " << Chess::MoveToUCI(bestMove) << std::endl;
 
         if (Options::Ponder) {
-            m_PonderThread = std::thread([this, bestMove]() -> void{
+            m_PonderThread = std::thread([this, bestMove]() -> void {
                 Chess::Board ponderBoard = m_Board;
                 Chess::PieceColor ponderSideToMove = m_SideToMove;
-    
+
                 if (bestMove) {
                     ponderBoard.DoMove(bestMove);
                     ponderSideToMove = Chess::InvertColor(ponderSideToMove);
                 }
-    
+
                 (void)ponderBoard.FindBestMoveByTime(ponderSideToMove, std::numeric_limits<int>::max(), false);
             });
         }
@@ -214,12 +222,12 @@ void UciHandler::command_setoption(const std::string& command) {
     if (name == "Hash") {
         m_Board.SetHashSize(std::stoi(value));
     }
-    
+
     else if (name == "Ponder") {
         Options::Ponder = value == "true";
         if (!Options::Ponder && m_PonderThread.joinable()) m_PonderThread.join();
     }
-    
+
     else if (name == "OwnBook") {
         Options::OwnBook = value == "true";
     }
@@ -228,19 +236,19 @@ void UciHandler::command_setoption(const std::string& command) {
         m_Board.SetCatchAll(value == "true");
         m_Board.ClearHash();
     }
-    
+
     else if (name == "Clear Hash") {
         m_Board.ClearHash();
     }
-    
+
     else if (name == "Move Overhead") {
         Options::MoveOverhead = std::stoi(value);
     }
-    
+
     else if (name == "Contempt") {
         m_Board.SetContempt(std::stoi(value));
     }
-    
+
     else if (name == "Minimum Thinking Time") {
         Options::MinimumThinkingTime = std::stoi(value);
     }
