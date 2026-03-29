@@ -268,6 +268,12 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
             sf::Clipboard::setString(m_Board.GetFen(m_SideToMove));
         }
     }
+
+    else if (key == sf::Keyboard::Scancode::T) {
+        m_Board.SetCatchAll(!m_Board.GetCatchAll());
+        m_Board.ClearHash();
+        updateEvaluation();
+    }
 }
 
 void Application::HandleMouseButtonPressed(sf::Vector2i position) {
@@ -387,20 +393,17 @@ void Application::doMove(Chess::Move move, bool animate) {
     if (HasFlag(move.Flag, Chess::MoveFlag::Check)) {
         m_SfxPlayer.Play(Sfx::Check);
     } else if (
-        HasFlag(move.Flag, Chess::MoveFlag::EnPassant) ||
         isCastle(move.Flag)
     ) {
         m_SfxPlayer.Play(Sfx::SpecialMove);
 
-        if (isCastle(move.Flag)) {
-            const bool isKingSide = HasFlag(move.Flag, Chess::MoveFlag::CastleKingSide);
-            const int rank = Chess::ToRank(move.StartingSquare);
+        const bool isKingSide = HasFlag(move.Flag, Chess::MoveFlag::CastleKingSide);
+        const int rank = Chess::ToRank(move.StartingSquare);
 
-            const int rookFrom = Chess::To2DIndex(rank, isKingSide ? 7 : 0);
-            const int rookTo = Chess::To2DIndex(rank, isKingSide ? 5 : 3);
+        const int rookFrom = Chess::To2DIndex(rank, isKingSide ? 7 : 0);
+        const int rookTo = Chess::To2DIndex(rank, isKingSide ? 5 : 3);
 
-            m_PieceAnimations.emplace_back(Chess::Move(rookFrom, rookTo));
-        }
+        m_PieceAnimations.emplace_back(Chess::Move(rookFrom, rookTo));
     } else if (isPromotion(move.Flag)) {
         m_SfxPlayer.Play(Sfx::Promotion);
     } else if (HasFlag(move.Flag, Chess::MoveFlag::Capture)) {
