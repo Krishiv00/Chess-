@@ -195,7 +195,7 @@ Each piece occupies an equal-sized cell.
 Icons are stored in a **horizontal sprite sheet**:
 
 ```
-[ Flip | Engine | Cancel | Reset ]
+[ Flip | Engine | Cancel | Reset | Own Book (on) | Own Book (off) | Ponder (on) | Ponder (off) ]
 ```
 
 Each icon occupies an equal-sized cell.

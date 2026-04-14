@@ -856,7 +856,7 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
 }
 
 void Application::renderButton(sf::RenderTarget& target, const Button& button) const {
-    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / 8.f;
+    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / static_cast<float>(m_Buttons.size() + 2);
     const float IconTextureHeight = static_cast<float>(m_IconTexture.getSize().y);
 
     const float tx = static_cast<float>(button.TextureIndex) * IconTextureWidth;
