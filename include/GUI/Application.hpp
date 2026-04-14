@@ -18,7 +18,7 @@ struct Button {
 
     uint8_t TextureIndex{0};
 
-    std::function<void()> Callback;
+    std::function<void(Button&)> Callback;
     bool Hovered{false};
 };
 
@@ -70,6 +70,11 @@ private:
         return std::make_pair(rank, file);
     }
 
+    void joinThreads();
+
+    void startPonder();
+    void stopPonder();
+
     void startNewGame();
 
     void doMove(Chess::Move move, bool animate);
@@ -94,8 +99,12 @@ private:
     Chess::Board m_Board;
     Chess::Move m_LastMove;
     Chess::PieceColor m_SideToMove;
-    uint16_t m_EngineThinkTimeMs{750};
     Chess::PieceColor m_LastEngineColor;
+
+    uint16_t m_EngineThinkTimeMs{750};
+    uint8_t m_EvaluationDepth{12};
+    bool m_UseOwnBook{true};
+    bool m_Ponder{true};
 
     // Invariant: only valid when not equal to `Chess::NullPos`
     uint8_t m_SelectedPiece{Chess::NullPos};

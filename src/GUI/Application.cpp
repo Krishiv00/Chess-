@@ -65,9 +65,8 @@ Application::Application() {
 }
 
 void Application::startNewGame() {
-    m_Board.CancelSearch();
-    if (m_PonderThread.joinable()) m_PonderThread.join();
-    if (m_SearchThread.joinable()) m_SearchThread.join();
+    joinThreads();
+
     m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
     m_LatestEvaluation = 0.5f;
     m_GameOver = false;
@@ -76,9 +75,7 @@ void Application::startNewGame() {
 }
 
 Application::~Application() {
-    m_Board.CancelSearch();
-    if (m_PonderThread.joinable()) m_PonderThread.join();
-    if (m_SearchThread.joinable()) m_SearchThread.join();
+    joinThreads();
 }
 
 void Application::SetTargetSize(sf::Vector2u size) {
@@ -116,7 +113,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         currentXPos, currentYPos,
         buttonSize, buttonSize,
         0,
-        [this]() -> void {
+        [this](Button&) -> void {
             m_Flipped ^= true;
             m_SfxPlayer.Play(Sfx::BoardFlip);
         }
@@ -129,7 +126,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         currentXPos, currentYPos,
         buttonSize, buttonSize,
         1,
-        [this]() -> void {
+        [this](Button&) -> void {
             if (!m_EngineThinking && !m_GameOver) pollEngineMove();
         }
     );
@@ -141,8 +138,39 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         currentXPos, currentYPos,
         buttonSize, buttonSize,
         2,
-        [this]() -> void {
+        [this](Button&) -> void {
             if (m_EngineThinking) m_Board.CancelSearch();
+        }
+    );
+
+    currentYPos += buttonSize + padding_y * 2.f;
+
+    // own book button
+    m_Buttons.emplace_back(
+        currentXPos, currentYPos,
+        buttonSize, buttonSize,
+        5 - m_UseOwnBook,
+        [this](Button& button) -> void {
+            m_UseOwnBook ^= 1;
+            
+            button.TextureIndex = 5 - m_UseOwnBook;
+            m_Popup = Popup("own book: " + std::string(m_UseOwnBook ? "true" : "false"));
+        }
+    );
+
+    currentYPos += buttonSize + padding_y * 2.f;
+
+    // ponder button
+    m_Buttons.emplace_back(
+        currentXPos, currentYPos,
+        buttonSize, buttonSize,
+        7 - m_Ponder,
+        [this](Button& button) -> void {
+            m_Ponder ^= 1;
+            if (!m_Ponder && !m_EngineThinking) stopPonder();
+
+            button.TextureIndex = 7 - m_Ponder;
+            m_Popup = Popup("ponder: " + std::string(m_Ponder ? "true" : "false"));
         }
     );
 
@@ -153,7 +181,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         currentXPos, static_cast<float>(windowSize.y) - buttonSize - padding_y,
         buttonSize, buttonSize,
         3,
-        [this]() -> void {
+        [this](Button&) -> void {
             startNewGame();
         }
     );
@@ -189,6 +217,12 @@ sf::VertexArray Application::generateCheckerboardMesh(float squareSize, float of
     }
 
     return vertices;
+}
+
+void Application::joinThreads() {
+    m_Board.CancelSearch();
+    if (m_PonderThread.joinable()) m_PonderThread.join();
+    if (m_SearchThread.joinable()) m_SearchThread.join();
 }
 
 #pragma region Resources
@@ -257,15 +291,14 @@ bool Application::LoadResources(const std::filesystem::path& root) {
 void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
     if (key == sf::Keyboard::Scancode::V) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
-            m_Board.CancelSearch();
-            if (m_PonderThread.joinable()) m_PonderThread.join();
-            if (m_SearchThread.joinable()) m_SearchThread.join();
+            joinThreads();
             m_SideToMove = m_Board.LoadFromFen(sf::Clipboard::getString());
             m_Board.SetEngineColor(m_SideToMove);
             updateEvaluation();
             m_GameOver = m_Flipped = false;
             m_LastMove = Chess::Move();
             m_Board.ClearHash();
+            startPonder();
         }
     }
 
@@ -276,6 +309,8 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
     }
 
     else if (key == sf::Keyboard::Scancode::T) {
+        joinThreads();
+
         m_Board.SetCatchAll(!m_Board.GetCatchAll());
         m_Board.ClearHash();
         updateEvaluation();
@@ -287,15 +322,22 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
         key == sf::Keyboard::Scancode::Down
     ) {
         const char dir = key == sf::Keyboard::Scancode::Up ? 1 : -1;
-        m_EngineThinkTimeMs = std::max(50, m_EngineThinkTimeMs + dir * 50);
-        m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs) + " ms");
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
+            m_EvaluationDepth = std::max(1, m_EvaluationDepth + dir);
+            updateEvaluation();
+            m_Popup = Popup("evaluation depth: " + std::to_string(m_EvaluationDepth));
+        } else {
+            m_EngineThinkTimeMs = std::max(50, m_EngineThinkTimeMs + dir * 50);
+            m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs) + " ms");
+        }
     }
 }
 
 void Application::HandleMouseButtonPressed(sf::Vector2i position) {
-    for (const Button& button : m_Buttons) {
+    for (Button& button : m_Buttons) {
         if (button.Hovered) {
-            if (button.Callback) button.Callback();
+            if (button.Callback) button.Callback(button);
             return;
         }
     }
@@ -344,9 +386,7 @@ void Application::pollEngineMove() {
 
     if (m_GameOver || m_EngineThinking) return;
 
-    m_Board.CancelSearch();
-    if (m_PonderThread.joinable()) m_PonderThread.join();
-    if (m_SearchThread.joinable()) m_SearchThread.join();
+    joinThreads();
 
     m_EngineThinking = true;
 
@@ -366,7 +406,7 @@ void Application::pollEngineMove() {
     Chess::PieceColor searchSideToMove = m_SideToMove;
 
     m_SearchThread = std::thread([searchBoard, searchSideToMove, this]() -> void {
-        const Chess::Move bestMove = searchBoard.FindBestMoveByTime(searchSideToMove, m_EngineThinkTimeMs);
+        const Chess::Move bestMove = searchBoard.FindBestMoveByTime(searchSideToMove, m_EngineThinkTimeMs, m_UseOwnBook);
 
         m_PendingEngineMove = bestMove;
         m_EngineThinking = false;
@@ -374,7 +414,7 @@ void Application::pollEngineMove() {
 }
 
 void Application::updateEvaluation() {
-    if (m_LatestEvaluation != 0.5f) m_LatestEvaluation = m_Board.GetConfidence(m_SideToMove, 12);
+    m_LatestEvaluation = m_Board.GetConfidence(m_SideToMove, m_EvaluationDepth);
 }
 
 void Application::doMove(Chess::Move move, bool animate) {
@@ -473,20 +513,35 @@ void Application::dropPiece(int idx, bool animate) {
     m_LegalMovesForSelectedPiece.clear();
 }
 
+#pragma region Ponder
+
+void Application::startPonder() {
+    if (!m_Ponder || m_GameOver) return;
+
+    Chess::Board ponderBoard = m_Board;
+    Chess::PieceColor ponderSideToMove = m_SideToMove;
+    Chess::Move bestMove = m_PendingEngineMove;
+
+    // do opponents best response first
+    ponderBoard.DoMove(ponderBoard.FindBestMoveByDepth(ponderSideToMove, 1));
+    ponderSideToMove = Chess::InvertColor(ponderSideToMove);
+
+    m_PonderThread = std::thread([ponderBoard, ponderSideToMove, bestMove]() -> void {
+        (void)ponderBoard.FindBestMoveByTime(ponderSideToMove, std::numeric_limits<int>::max(), false);
+    });
+}
+
+void Application::stopPonder() {
+    m_Board.CancelSearch();
+    if (m_PonderThread.joinable()) m_PonderThread.join();
+}
+
 #pragma region Update
 
 void Application::Update(float deltaTime) {
     if (m_PendingEngineMove) {
         doMove(m_PendingEngineMove, true);
-
-        // start pondering
-        Chess::Board ponderBoard = m_Board;
-        Chess::PieceColor ponderSideToMove = m_SideToMove;
-        Chess::Move bestMove = m_PendingEngineMove;
-
-        m_PonderThread = std::thread([ponderBoard, ponderSideToMove, bestMove]() -> void {
-            (void)ponderBoard.FindBestMoveByTime(ponderSideToMove, std::numeric_limits<int>::max(), false);
-        });
+        startPonder();
 
         m_PendingEngineMove = Chess::Move();
     }
@@ -801,7 +856,7 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
 }
 
 void Application::renderButton(sf::RenderTarget& target, const Button& button) const {
-    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / static_cast<float>(m_Buttons.size());
+    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / 8.f;
     const float IconTextureHeight = static_cast<float>(m_IconTexture.getSize().y);
 
     const float tx = static_cast<float>(button.TextureIndex) * IconTextureWidth;
