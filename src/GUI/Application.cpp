@@ -26,6 +26,9 @@ namespace LichessTheme {
     constexpr sf::Color LastMoveHighlight = sf::Color(155, 200, 0, 105);
     constexpr sf::Color LegalMoveHighlight = sf::Color(20, 85, 29, 128);
 
+    constexpr sf::Color PopupBackground = sf::Color(28, 27, 25, 230);
+    constexpr sf::Color PopupText = sf::Color(240, 217, 181);
+
     constexpr sf::Color Background = sf::Color(48, 46, 43);
 }
 
@@ -40,6 +43,9 @@ namespace ChesscomTheme {
 
     constexpr sf::Color LastMoveHighlight = sf::Color(255, 255, 52, 128);
     constexpr sf::Color LegalMoveHighlight = sf::Color(2, 1, 0, 36);
+
+    constexpr sf::Color PopupBackground = sf::Color(28, 27, 25, 230);
+    constexpr sf::Color PopupText = sf::Color(235, 236, 208);
 
     constexpr sf::Color Background = sf::Color(48, 46, 43);
 }
@@ -273,6 +279,16 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
         m_Board.SetCatchAll(!m_Board.GetCatchAll());
         m_Board.ClearHash();
         updateEvaluation();
+        m_Popup = Popup("catch all mode: " + std::string(m_Board.GetCatchAll() ? "true" : "false"));
+    }
+
+    else if (
+        key == sf::Keyboard::Scancode::Up ||
+        key == sf::Keyboard::Scancode::Down
+    ) {
+        const char dir = key == sf::Keyboard::Scancode::Up ? 1 : -1;
+        m_EngineThinkTimeMs = std::max(50, m_EngineThinkTimeMs + dir * 50);
+        m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs) + " ms");
     }
 }
 
@@ -350,7 +366,7 @@ void Application::pollEngineMove() {
     Chess::PieceColor searchSideToMove = m_SideToMove;
 
     m_SearchThread = std::thread([searchBoard, searchSideToMove, this]() -> void {
-        const Chess::Move bestMove = searchBoard.FindBestMoveByTime(searchSideToMove, 750);
+        const Chess::Move bestMove = searchBoard.FindBestMoveByTime(searchSideToMove, m_EngineThinkTimeMs);
 
         m_PendingEngineMove = bestMove;
         m_EngineThinking = false;
@@ -358,7 +374,7 @@ void Application::pollEngineMove() {
 }
 
 void Application::updateEvaluation() {
-    m_LatestEvaluation = m_Board.GetConfidence(m_SideToMove, 12);
+    if (m_LatestEvaluation != 0.5f) m_LatestEvaluation = m_Board.GetConfidence(m_SideToMove, 12);
 }
 
 void Application::doMove(Chess::Move move, bool animate) {
@@ -487,6 +503,11 @@ void Application::Update(float deltaTime) {
         } else {
             ++it;
         }
+    }
+
+    if (m_Popup.Timer > 0.f) {
+        m_Popup.Timer = std::max(0.f, m_Popup.Timer - deltaTime);
+        if (m_Popup.Timer == 0.f) m_Popup.Info.clear();
     }
 
     m_CurrentEvaluation = Utils::ExponentiallyMoveTo(
@@ -925,5 +946,40 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             sf::Vector2f(target.getSize().x - m_PanelWidth, 0.f),
             sf::Vector2f(m_PanelWidth, target.getSize().y)
         );
+
+        // popup
+        if (m_Popup.isActive()) {
+            const float progress = std::min(1.f, m_Popup.Timer / 0.15f);
+            const float eased = progress * progress * (3.f - 2.f * progress);
+
+            sf::Text text(m_Font, m_Popup.Info, 15);
+            text.setStyle(sf::Text::Style::Bold);
+            const sf::FloatRect bounds = text.getLocalBounds();
+            text.setOrigin(bounds.position);
+
+            const float paddingH = 18.f;
+            const float paddingV = 24.f;
+            const float pillW = bounds.size.x + paddingH * 2.f;
+            const float pillH = bounds.size.y + paddingV * 2.f;
+            const float margin = 12.f;
+
+            const float targetX = static_cast<float>(target.getSize().x) - pillW - margin;
+            const float targetY = static_cast<float>(target.getSize().y) - pillH - margin;
+
+            const float slideOffset = (1.f - eased) * 18.f;
+            const sf::Vector2f pillPos(targetX, targetY + slideOffset);
+
+            sf::Color bgColor = Theme::PopupBackground;
+            bgColor.a = static_cast<uint8_t>(static_cast<float>(bgColor.a) * eased);
+
+            sf::Color textColor = Theme::PopupText;
+            textColor.a = static_cast<uint8_t>(255.f * eased);
+
+            RenderRoundedQuad(target, bgColor, pillPos, sf::Vector2f(pillW, pillH), 0.4f);
+
+            text.setFillColor(textColor);
+            text.setPosition(sf::Vector2f(pillPos.x + paddingH, pillPos.y + paddingV));
+            target.draw(text);
+        }
     }
 }

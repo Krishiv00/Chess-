@@ -25,10 +25,26 @@ struct Button {
 class Application final {
 private:
     struct PieceMoveAnim {
-        PieceMoveAnim(Chess::Move move) : Move(move), Timer(1.f) {}
-
-        float Timer;
+        float Timer{0.f};
         Chess::Move Move;
+
+        PieceMoveAnim() = default;
+        PieceMoveAnim(Chess::Move move) : Move(move), Timer(1.f) {}
+    };
+
+    struct Popup {
+        float Timer{0.f};
+        std::string Info;
+
+        Popup() = default;
+        Popup(const std::string& info) : Info(info), Timer(1.f) {
+            for (char& c : Info) c = std::toupper(c);
+        }
+
+        [[nodiscard]]
+        inline bool isActive() const noexcept {
+            return Timer;
+        }
     };
 
     [[nodiscard]]
@@ -78,6 +94,7 @@ private:
     Chess::Board m_Board;
     Chess::Move m_LastMove;
     Chess::PieceColor m_SideToMove;
+    uint16_t m_EngineThinkTimeMs{750};
     Chess::PieceColor m_LastEngineColor;
 
     // Invariant: only valid when not equal to `Chess::NullPos`
@@ -108,6 +125,7 @@ private:
     // UI / UX
     std::vector<PieceMoveAnim> m_PieceAnimations;
     std::vector<Button> m_Buttons;
+    Popup m_Popup;
 
     // Resources
     sf::Texture m_PieceTexture;
