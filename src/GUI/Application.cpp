@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "GUI/Application.hpp"
 
 #pragma region Utils
@@ -152,7 +150,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         5 - m_UseOwnBook,
         [this](Button& button) -> void {
             m_UseOwnBook ^= 1;
-            
+
             button.TextureIndex = 5 - m_UseOwnBook;
             m_Popup = Popup("own book: " + std::string(m_UseOwnBook ? "true" : "false"));
         }
@@ -430,17 +428,21 @@ void Application::doMove(Chess::Move move, bool animate) {
     ) {
         m_SfxPlayer.Play(Sfx::GameEnd);
 
+        std::string info;
+
         if (m_Board.FiftyMoveRule()) {
-            std::cout << "Draw by 50-move rule" << std::endl;
+            info = "draw by 50-move rule";
         } else if (m_Board.HasInsufficientMaterial()) {
-            std::cout << "Draw by insufficient material" << std::endl;
+            info = "draw by insufficient material";
         } else if (m_Board.isThreefoldRepetition()) {
-            std::cout << "Draw by repetition" << std::endl;
+            info = "draw by repetition";
         } else if (!m_Board.isUnderCheck(m_SideToMove)) {
-            std::cout << "Draw by stalemate" << std::endl;
+            info = "stalemate!";
         } else {
-            std::cout << "Checkmate!" << std::endl;
+            info = "checkmate!";
         }
+
+        m_Popup = Popup(info, 5.f);
 
         m_GameOver = true;
     }

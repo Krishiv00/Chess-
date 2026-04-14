@@ -40,6 +40,9 @@ private:
         Popup(const std::string& info) : Info(info), Timer(1.f) {
             for (char& c : Info) c = std::toupper(c);
         }
+        Popup(const std::string& info, float timer) : Info(info), Timer(timer) {
+            for (char& c : Info) c = std::toupper(c);
+        }
 
         [[nodiscard]]
         inline bool isActive() const noexcept {
