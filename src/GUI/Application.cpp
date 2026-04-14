@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "GUI/Application.hpp"
 
 #pragma region Utils
