@@ -141,6 +141,7 @@ private:
     float m_SquareSize;
     float m_PanelWidth;
     float m_PanelBrightness{0.f};
+    float m_AnalyisModeOverlay_t{0.f};
 
     float m_CurrentEvaluation{0.5f};
     float m_LatestEvaluation{0.5f};

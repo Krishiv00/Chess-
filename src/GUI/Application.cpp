@@ -718,6 +718,10 @@ void Application::Update(float deltaTime) {
     m_PanelBrightness = Utils::ExponentiallyMoveTo(
         m_PanelBrightness, m_HoveringPanel, 20.f * deltaTime, 0.002f
     );
+
+    m_AnalyisModeOverlay_t = Utils::ExponentiallyMoveTo(
+        m_AnalyisModeOverlay_t, m_AnalysisMode, 7.5f * deltaTime, 0.002f
+    );
 }
 
 void Application::spawnGameOverParticles() {
@@ -1239,7 +1243,7 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
 
         if (m_AnalysisMode) {
             RenderQuad(
-                target, sf::Color(120, 120, 120, 90),
+                target, sf::Color(120, 120, 120, 90 * m_AnalyisModeOverlay_t),
                 sf::Vector2f(m_EvaluationBarWidth, 0.f), sf::Vector2f(Chess::Files, Chess::Ranks) * m_SquareSize
             );
         }
