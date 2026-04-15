@@ -50,6 +50,26 @@ private:
         }
     };
 
+    enum class GameOverResult {
+        None,
+        Checkmate,
+        Stalemate,
+        DrawFiftyMove,
+        DrawRepetition,
+        DrawInsufficient,
+    };
+
+    struct GameOverParticle {
+        sf::Vector2f Position;
+        sf::Vector2f Velocity;
+        float Rotation{0.f};
+        float RotationSpeed{0.f};
+        float Size{0.f};
+        float Life{1.f};
+        uint8_t ColorIndex{0};
+        uint8_t Shape{0}; // 0=square  1=diamond  2=circle
+    };
+
     [[nodiscard]]
     inline bool hasSelectedPiece() const noexcept {
         return m_SelectedPiece != Chess::NullPos;
@@ -80,6 +100,8 @@ private:
 
     void startNewGame();
 
+    void spawnGameOverParticles();
+
     void doMove(Chess::Move move, bool animate);
     void onMouseButtonSignal(sf::Vector2i position, bool released);
     void pickPiece(int idx);
@@ -98,6 +120,8 @@ private:
     void renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mousePosition) const;
     void renderButton(sf::RenderTarget& target, const Button& button) const;
     void renderBitboard(sf::RenderTarget& target, uint64_t bitboard, sf::Color color) const;
+    void renderPopup(sf::RenderTarget& target) const;
+    void renderCheckmateOverlay(sf::RenderTarget& target) const;
 
     Chess::Board m_Board;
     Chess::Move m_LastMove;
@@ -120,6 +144,10 @@ private:
 
     float m_CurrentEvaluation{0.5f};
     float m_LatestEvaluation{0.5f};
+
+    float m_GameOverTimer{0.f};
+    GameOverResult m_GameOverResult{GameOverResult::None};
+    std::vector<GameOverParticle> m_GameOverParticles;
 
     sf::VertexArray m_CheckerboardMesh;
 

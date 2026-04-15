@@ -10,6 +10,12 @@ namespace Utils {
         const float diff = to - from;
         return std::fabs(diff) < snapThreshold ? to : (from + diff * (1.f - std::exp(-speed)));
     }
+
+    [[nodiscard]]
+    static sf::Color ConvertAlpha(sf::Color color, float factor) noexcept {
+        color.a *= factor;
+        return color;
+    }
 }
 
 #pragma region Themes
@@ -30,6 +36,18 @@ namespace LichessTheme {
     constexpr sf::Color PopupText = sf::Color(240, 217, 181);
 
     constexpr sf::Color Background = sf::Color(48, 46, 43);
+
+    constexpr sf::Color GameOverOverlayBg = sf::Color(18, 17, 15, 195);
+    constexpr sf::Color GameOverCardBg = sf::Color(42, 40, 37, 248);
+    constexpr sf::Color GameOverTitleText = sf::Color(240, 217, 181, 255);
+    constexpr sf::Color GameOverSubText = sf::Color(180, 160, 130, 255);
+    constexpr sf::Color GameOverParticle[] = {
+        sf::Color(240, 217, 181),
+        sf::Color(181, 136, 99),
+        sf::Color(200, 185, 150),
+        sf::Color(255, 230, 180),
+        sf::Color(120, 100, 75),
+    };
 }
 
 namespace ChesscomTheme {
@@ -48,6 +66,18 @@ namespace ChesscomTheme {
     constexpr sf::Color PopupText = sf::Color(235, 236, 208);
 
     constexpr sf::Color Background = sf::Color(48, 46, 43);
+
+    constexpr sf::Color GameOverOverlayBg = sf::Color(18, 17, 15, 195);
+    constexpr sf::Color GameOverCardBg = sf::Color(40, 46, 36, 248);
+    constexpr sf::Color GameOverTitleText = sf::Color(235, 236, 208, 255);
+    constexpr sf::Color GameOverSubText = sf::Color(160, 185, 130, 255);
+    constexpr sf::Color GameOverParticle[] = {
+        sf::Color(235, 236, 208),
+        sf::Color(115, 149, 82),
+        sf::Color(180, 200, 140),
+        sf::Color(255, 240, 180),
+        sf::Color(80, 110, 55),
+    };
 }
 
 namespace Theme = ChesscomTheme;
@@ -72,6 +102,10 @@ void Application::startNewGame() {
     m_GameOver = false;
     m_Flipped = false;
     m_LastMove = Chess::Move();
+
+    m_GameOverTimer = 0.f;
+    m_GameOverResult = GameOverResult::None;
+    m_GameOverParticles.clear();
 }
 
 Application::~Application() {
@@ -167,7 +201,11 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         7 - m_Ponder,
         [this](Button& button) -> void {
             m_Ponder ^= 1;
-            if (!m_Ponder && !m_EngineThinking) stopPonder();
+
+            if (!m_EngineThinking) {
+                if (m_Ponder) startPonder();
+                else stopPonder();
+            }
 
             button.TextureIndex = 7 - m_Ponder;
             m_Popup = Popup("ponder: " + std::string(m_Ponder ? "true" : "false"));
@@ -430,21 +468,20 @@ void Application::doMove(Chess::Move move, bool animate) {
     ) {
         m_SfxPlayer.Play(Sfx::GameEnd);
 
-        std::string info;
-
         if (m_Board.FiftyMoveRule()) {
-            info = "draw by 50-move rule";
+            m_GameOverResult = GameOverResult::DrawFiftyMove;
         } else if (m_Board.HasInsufficientMaterial()) {
-            info = "draw by insufficient material";
+            m_GameOverResult = GameOverResult::DrawInsufficient;
         } else if (m_Board.isThreefoldRepetition()) {
-            info = "draw by repetition";
+            m_GameOverResult = GameOverResult::DrawRepetition;
         } else if (!m_Board.isUnderCheck(m_SideToMove)) {
-            info = "stalemate!";
+            m_GameOverResult = GameOverResult::Stalemate;
         } else {
-            info = "checkmate!";
+            m_GameOverResult = GameOverResult::Checkmate;
         }
 
-        m_Popup = Popup(info, 5.f);
+        m_GameOverTimer = 0.001f;
+        spawnGameOverParticles();
 
         m_GameOver = true;
     }
@@ -569,6 +606,26 @@ void Application::Update(float deltaTime) {
         if (m_Popup.Timer == 0.f) m_Popup.Info.clear();
     }
 
+    if (m_GameOverTimer > 0.f) {
+        m_GameOverTimer += deltaTime;
+    }
+
+    constexpr float Gravity = 400.f;
+    constexpr float AirResistance = 0.98f;
+
+    for (auto it = m_GameOverParticles.begin(); it != m_GameOverParticles.end(); ) {
+        GameOverParticle& p = *it;
+
+        p.Velocity.y += Gravity * deltaTime;
+        p.Velocity *= AirResistance;
+        p.Position += p.Velocity * deltaTime;
+        p.Rotation += p.RotationSpeed * deltaTime;
+        p.Life -= deltaTime * 0.32f;
+
+        if (p.Life <= 0.f) it = m_GameOverParticles.erase(it);
+        else ++it;
+    }
+
     m_CurrentEvaluation = Utils::ExponentiallyMoveTo(
         m_CurrentEvaluation, m_LatestEvaluation, 7.5f * deltaTime, 0.002f
     );
@@ -576,6 +633,48 @@ void Application::Update(float deltaTime) {
     m_PanelBrightness = Utils::ExponentiallyMoveTo(
         m_PanelBrightness, m_HoveringPanel, 20.f * deltaTime, 0.002f
     );
+}
+
+void Application::spawnGameOverParticles() {
+    m_GameOverParticles.clear();
+
+    const float boardWidth = Chess::Files * m_SquareSize;
+    const float boardCenterX = m_EvaluationBarWidth + boardWidth * 0.5f;
+
+    for (int i = 0; i < 90; ++i) {
+        GameOverParticle& p = m_GameOverParticles.emplace_back();
+
+        const float spawnSpread = boardWidth * 0.4f;
+
+        p.Position = sf::Vector2f(
+            boardCenterX + (std::rand() / static_cast<float>(RAND_MAX) - 0.5f) * spawnSpread * 2.f,
+            Chess::Ranks * m_SquareSize - (std::rand() % 10)
+        );
+
+        const float angle = -60.f - (std::rand() / static_cast<float>(RAND_MAX)) * 60.f;
+        const float angleRad = angle * 3.14159265f / 180.f;
+        const float speed = 220.f + (std::rand() / static_cast<float>(RAND_MAX)) * 500.f;
+
+        p.Velocity = sf::Vector2f(
+            std::cos(angleRad) * speed,
+            std::sin(angleRad) * speed * 2.f
+        );
+
+        p.Rotation = static_cast<float>(std::rand() % 360);
+        p.RotationSpeed = -300.f + (std::rand() % 600);
+
+        const float sizeRand = std::rand() / static_cast<float>(RAND_MAX);
+        p.Size = 4.f + sizeRand * sizeRand * 12.f;
+
+        p.Life = 0.7f + 0.5f * (std::rand() / static_cast<float>(RAND_MAX));
+        p.ColorIndex = std::rand() % 5;
+
+        const int shapeRoll = std::rand() % 10;
+
+        if (shapeRoll < 4) p.Shape = 2; // 40% circles
+        else if (shapeRoll < 7) p.Shape = 0; // 30% squares
+        else p.Shape = 1; // 30% diamonds
+    }
 }
 
 #pragma region Render
@@ -641,7 +740,7 @@ static void RenderRoundedQuad(
     target.draw(vertices);
 }
 
-static void RenderTriangulatedBorder(
+static void RenderCaptureOverlay(
     sf::RenderTarget& target,
     sf::Color color,
     sf::Vector2f position,
@@ -840,7 +939,7 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
         if (move.TargetSquare == hoveredIdx) {
             RenderQuad(target, Theme::LegalMoveHighlight, sf::Vector2f(x, y), sf::Vector2f(m_SquareSize, m_SquareSize));
         } else if (m_Board.GetOccupancyMap(Chess::InvertColor(m_SideToMove)) & Chess::IndexToMask(move.TargetSquare)) {
-            RenderTriangulatedBorder(
+            RenderCaptureOverlay(
                 target, Theme::LegalMoveHighlight,
                 sf::Vector2f(x, y), sf::Vector2f(m_SquareSize, m_SquareSize),
                 0.167f
@@ -896,12 +995,148 @@ void Application::renderBitboard(sf::RenderTarget& target, uint64_t bitboard, sf
         const float x = file * m_SquareSize + m_EvaluationBarWidth;
 
         RenderQuad(
-            target,
-            color,
+            target, color,
             sf::Vector2f(x, y),
             sf::Vector2f(m_SquareSize, m_SquareSize)
         );
     }
+}
+
+void Application::renderPopup(sf::RenderTarget& target) const {
+    const float progress = std::min(1.f, m_Popup.Timer / 0.15f);
+    const float eased = progress * progress * (3.f - 2.f * progress);
+
+    sf::Text text(m_Font, m_Popup.Info, 15);
+    text.setStyle(sf::Text::Style::Bold);
+
+    const sf::FloatRect bounds = text.getLocalBounds();
+    text.setOrigin(bounds.position);
+
+    const float paddingH = 18.f;
+    const float paddingV = 24.f;
+    const float pillW = bounds.size.x + paddingH * 2.f;
+    const float pillH = bounds.size.y + paddingV * 2.f;
+    const float margin = 12.f;
+
+    const float targetX = static_cast<float>(target.getSize().x) - pillW - margin;
+    const float targetY = static_cast<float>(target.getSize().y) - pillH - margin;
+
+    const float slideOffset = (1.f - eased) * 18.f;
+    const sf::Vector2f pillPos(targetX, targetY + slideOffset);
+
+    const sf::Color bgColor = Utils::ConvertAlpha(Theme::PopupBackground, eased);
+    const sf::Color textColor = Utils::ConvertAlpha(Theme::PopupText, eased);
+
+    RenderRoundedQuad(target, bgColor, pillPos, sf::Vector2f(pillW, pillH), 0.4f);
+
+    text.setFillColor(textColor);
+    text.setPosition(sf::Vector2f(pillPos.x + paddingH, pillPos.y + paddingV));
+
+    target.draw(text);
+}
+
+void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
+    const float W = static_cast<float>(target.getSize().x);
+    const float H = static_cast<float>(target.getSize().y);
+
+    const float rawP = std::min(1.f, m_GameOverTimer / 0.45f);
+    const float eased = rawP * rawP * (3.f - 2.f * rawP);
+
+    // bg overlay
+    const sf::Color bgColor = Utils::ConvertAlpha(Theme::GameOverOverlayBg, eased);
+
+    RenderQuad(target, bgColor,
+        sf::Vector2f(m_EvaluationBarWidth, 0.f),
+        sf::Vector2f(Chess::Files * m_SquareSize, H)
+    );
+
+    // particles
+    for (const GameOverParticle& p : m_GameOverParticles) {
+        const float alpha = std::max(0.f, p.Life);
+        sf::Color col = Theme::GameOverParticle[p.ColorIndex];
+        col.a = 255 * alpha * std::min(1.f, eased * 2.f);
+
+        if (p.Shape == 2) {
+            sf::CircleShape circle(p.Size * 0.5f);
+
+            circle.setOrigin(sf::Vector2f(p.Size * 0.5f, p.Size * 0.5f));
+            circle.setPosition(p.Position);
+            circle.setFillColor(col);
+
+            target.draw(circle);
+        } else {
+            sf::RectangleShape rect(sf::Vector2f(p.Size, p.Size));
+
+            rect.setOrigin(sf::Vector2f(p.Size * 0.5f, p.Size * 0.5f));
+            rect.setPosition(p.Position);
+            rect.setRotation(sf::degrees(p.Shape == 1 ? p.Rotation + 45.f : p.Rotation));
+            rect.setFillColor(col);
+
+            target.draw(rect);
+        }
+    }
+
+    // result card
+    std::string titleStr, subStr;
+    switch (m_GameOverResult) {
+    case GameOverResult::Checkmate: titleStr = "CHECKMATE"; subStr = "The game is over."; break;
+    case GameOverResult::Stalemate: titleStr = "STALEMATE"; subStr = "No legal moves - it's a draw."; break;
+    case GameOverResult::DrawFiftyMove: titleStr = "DRAW"; subStr = "50-move rule."; break;
+    case GameOverResult::DrawRepetition: titleStr = "DRAW"; subStr = "Threefold repetition."; break;
+    case GameOverResult::DrawInsufficient: titleStr = "DRAW"; subStr = "Insufficient material."; break;
+    default: return;
+    }
+
+    const unsigned int titleSize = static_cast<unsigned int>(m_SquareSize * 0.55f);
+    const unsigned int subSize = static_cast<unsigned int>(m_SquareSize * 0.22f);
+
+    sf::Text titleText(m_Font, titleStr, titleSize);
+    titleText.setStyle(sf::Text::Style::Bold);
+    sf::Text subText(m_Font, subStr, subSize);
+
+    const sf::FloatRect tb = titleText.getLocalBounds();
+    const sf::FloatRect sb = subText.getLocalBounds();
+
+    const float cardPadH = m_SquareSize * 0.60f;
+    const float cardPadV = m_SquareSize * 0.50f;
+    const float cardGap = m_SquareSize * 0.20f;
+    const float cardW = std::max(tb.size.x, sb.size.x) + cardPadH * 2.f;
+    const float cardH = tb.size.y + sb.size.y + cardGap + cardPadV * 2.f;
+
+    const float boardCX = m_EvaluationBarWidth + Chess::Files * m_SquareSize * 0.5f;
+    const float boardCY = H * 0.5f;
+
+    const float slideY = (1.f - eased) * m_SquareSize * 0.55f;
+
+    const sf::Vector2f cardPos(boardCX - cardW * 0.5f, boardCY - cardH * 0.5f + slideY);
+
+    const sf::Color cardBg = Utils::ConvertAlpha(Theme::GameOverCardBg, eased);
+    RenderRoundedQuad(target, cardBg, cardPos, sf::Vector2f(cardW, cardH), 0.1f);
+
+    // decorative separator line
+    const float lineW = cardW * 0.5f;
+    const float lineY = cardPos.y + cardPadV + tb.size.y + cardGap * 0.45f;
+
+    const sf::Color lineColor = Utils::ConvertAlpha(Theme::GameOverSubText, eased * 0.45f);
+
+    RenderQuad(target, lineColor,
+        sf::Vector2f(boardCX - lineW * 0.5f, lineY),
+        sf::Vector2f(lineW, 1.5f)
+    );
+
+    // title text - horizontally centred
+    const sf::Color titleCol = Utils::ConvertAlpha(Theme::GameOverTitleText, eased);
+    titleText.setOrigin(sf::Vector2f(tb.position.x + tb.size.x * 0.5f, tb.position.y));
+    titleText.setPosition(sf::Vector2f(boardCX, cardPos.y + cardPadV));
+    titleText.setFillColor(titleCol);
+    target.draw(titleText);
+
+    // subtitle text
+    const sf::Color subCol = Utils::ConvertAlpha(Theme::GameOverSubText, eased);
+    subText.setOrigin(sf::Vector2f(sb.position.x + sb.size.x * 0.5f, sb.position.y));
+    subText.setPosition(sf::Vector2f(boardCX, cardPos.y + cardPadV + tb.size.y + cardGap));
+    subText.setFillColor(subCol);
+    target.draw(subText);
 }
 
 void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) const {
@@ -997,8 +1232,7 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
         }
 
         // panel mask (for fade effect)
-        sf::Color maskColor = Theme::Background;
-        maskColor.a = 255 * (1.f - m_PanelBrightness);
+        const sf::Color maskColor = Utils::ConvertAlpha(Theme::Background, 1.f - m_PanelBrightness);
 
         RenderQuad(
             target, maskColor,
@@ -1006,39 +1240,12 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             sf::Vector2f(m_PanelWidth, target.getSize().y)
         );
 
-        // popup
         if (m_Popup.isActive()) {
-            const float progress = std::min(1.f, m_Popup.Timer / 0.15f);
-            const float eased = progress * progress * (3.f - 2.f * progress);
+            renderPopup(target);
+        }
 
-            sf::Text text(m_Font, m_Popup.Info, 15);
-            text.setStyle(sf::Text::Style::Bold);
-            const sf::FloatRect bounds = text.getLocalBounds();
-            text.setOrigin(bounds.position);
-
-            const float paddingH = 18.f;
-            const float paddingV = 24.f;
-            const float pillW = bounds.size.x + paddingH * 2.f;
-            const float pillH = bounds.size.y + paddingV * 2.f;
-            const float margin = 12.f;
-
-            const float targetX = static_cast<float>(target.getSize().x) - pillW - margin;
-            const float targetY = static_cast<float>(target.getSize().y) - pillH - margin;
-
-            const float slideOffset = (1.f - eased) * 18.f;
-            const sf::Vector2f pillPos(targetX, targetY + slideOffset);
-
-            sf::Color bgColor = Theme::PopupBackground;
-            bgColor.a = static_cast<uint8_t>(static_cast<float>(bgColor.a) * eased);
-
-            sf::Color textColor = Theme::PopupText;
-            textColor.a = static_cast<uint8_t>(255.f * eased);
-
-            RenderRoundedQuad(target, bgColor, pillPos, sf::Vector2f(pillW, pillH), 0.4f);
-
-            text.setFillColor(textColor);
-            text.setPosition(sf::Vector2f(pillPos.x + paddingH, pillPos.y + paddingV));
-            target.draw(text);
+        if (m_GameOverResult != GameOverResult::None) {
+            renderCheckmateOverlay(target);
         }
     }
 }
