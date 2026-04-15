@@ -179,15 +179,59 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
 
     currentYPos += buttonSize + padding_y * 2.f;
 
+    // up button
+    m_Buttons.emplace_back(
+        currentXPos, currentYPos,
+        buttonSize, buttonSize,
+        4,
+        [this](Button&) -> void {
+            if (
+                sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl) ||
+                sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::RControl)
+            ) {
+                ++m_EvaluationDepth;
+                updateEvaluation();
+                m_Popup = Popup("evaluation depth: " + std::to_string(m_EvaluationDepth));
+            } else {
+                m_EngineThinkTimeMs += 50;
+                m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs));
+            }
+        }
+    );
+
+    currentYPos += buttonSize + padding_y * 2.f;
+
+    // down button
+    m_Buttons.emplace_back(
+        currentXPos, currentYPos,
+        buttonSize, buttonSize,
+        5,
+        [this](Button&) -> void {
+            if (
+                sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl) ||
+                sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::RControl)
+            ) {
+                if (m_EvaluationDepth > 1) --m_EvaluationDepth;
+                updateEvaluation();
+                m_Popup = Popup("evaluation depth: " + std::to_string(m_EvaluationDepth));
+            } else {
+                m_EngineThinkTimeMs = std::max(50, m_EngineThinkTimeMs - 50);
+                m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs));
+            }
+        }
+    );
+
+    currentYPos += buttonSize + padding_y * 2.f;
+
     // own book button
     m_Buttons.emplace_back(
         currentXPos, currentYPos,
         buttonSize, buttonSize,
-        5 - m_UseOwnBook,
+        7 - m_UseOwnBook,
         [this](Button& button) -> void {
             m_UseOwnBook ^= 1;
 
-            button.TextureIndex = 5 - m_UseOwnBook;
+            button.TextureIndex = 7 - m_UseOwnBook;
             m_Popup = Popup("own book: " + std::string(m_UseOwnBook ? "true" : "false"));
         }
     );
@@ -198,7 +242,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
     m_Buttons.emplace_back(
         currentXPos, currentYPos,
         buttonSize, buttonSize,
-        7 - m_Ponder,
+        9 - m_Ponder,
         [this](Button& button) -> void {
             m_Ponder ^= 1;
 
@@ -207,8 +251,28 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 else stopPonder();
             }
 
-            button.TextureIndex = 7 - m_Ponder;
+            button.TextureIndex = 9 - m_Ponder;
             m_Popup = Popup("ponder: " + std::string(m_Ponder ? "true" : "false"));
+        }
+    );
+
+    currentYPos += buttonSize + padding_y * 2.f;
+
+    // catch all button
+    m_Buttons.emplace_back(
+        currentXPos, currentYPos,
+        buttonSize, buttonSize,
+        11 - m_Board.GetCatchAll(),
+        [this](Button& button) -> void {
+            joinThreads();
+
+            m_Board.SetCatchAll(!m_Board.GetCatchAll());
+            m_Board.ClearHash();
+
+            updateEvaluation();
+
+            button.TextureIndex = 11 - m_Board.GetCatchAll();
+            m_Popup = Popup("catch all mode: " + std::string(m_Board.GetCatchAll() ? "true" : "false"));
         }
     );
 
@@ -345,31 +409,6 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
             sf::Clipboard::setString(m_Board.GetFen(m_SideToMove));
         }
     }
-
-    else if (key == sf::Keyboard::Scancode::T) {
-        joinThreads();
-
-        m_Board.SetCatchAll(!m_Board.GetCatchAll());
-        m_Board.ClearHash();
-        updateEvaluation();
-        m_Popup = Popup("catch all mode: " + std::string(m_Board.GetCatchAll() ? "true" : "false"));
-    }
-
-    else if (
-        key == sf::Keyboard::Scancode::Up ||
-        key == sf::Keyboard::Scancode::Down
-    ) {
-        const char dir = key == sf::Keyboard::Scancode::Up ? 1 : -1;
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
-            m_EvaluationDepth = std::max(1, m_EvaluationDepth + dir);
-            updateEvaluation();
-            m_Popup = Popup("evaluation depth: " + std::to_string(m_EvaluationDepth));
-        } else {
-            m_EngineThinkTimeMs = std::max(50, m_EngineThinkTimeMs + dir * 50);
-            m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs) + " ms");
-        }
-    }
 }
 
 void Application::HandleMouseButtonPressed(sf::Vector2i position) {
@@ -381,6 +420,8 @@ void Application::HandleMouseButtonPressed(sf::Vector2i position) {
     }
 
     onMouseButtonSignal(position, false);
+
+    if (m_GameOver && m_GameOverParticles.empty()) m_GameOverResult = GameOverResult::None;
 }
 
 void Application::HandleMouseButtonReleased(sf::Vector2i position) {
@@ -959,7 +1000,7 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
 }
 
 void Application::renderButton(sf::RenderTarget& target, const Button& button) const {
-    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / static_cast<float>(m_Buttons.size() + 2);
+    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / static_cast<float>(m_Buttons.size() + 3);
     const float IconTextureHeight = static_cast<float>(m_IconTexture.getSize().y);
 
     const float tx = static_cast<float>(button.TextureIndex) * IconTextureWidth;
