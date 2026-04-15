@@ -98,7 +98,7 @@ private:
     void startPonder();
     void stopPonder();
 
-    void startNewGame();
+    void loadFen(const std::string& fen);
 
     void spawnGameOverParticles();
 
@@ -149,6 +149,8 @@ private:
     GameOverResult m_GameOverResult{GameOverResult::None};
     std::vector<GameOverParticle> m_GameOverParticles;
 
+    std::string m_AnalysisEntryState{Chess::DefaultFEN};
+
     sf::VertexArray m_CheckerboardMesh;
 
     // Multithreading
@@ -161,6 +163,7 @@ private:
     bool m_Flipped{false};
     bool m_EngineThinking{false};
     bool m_HoveringPanel{false};
+    bool m_AnalysisMode{false};
 
     // UI / UX
     std::vector<PieceMoveAnim> m_PieceAnimations;

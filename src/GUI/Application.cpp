@@ -90,18 +90,24 @@ Application::Application() {
     m_Board.SetHashSize(128);
     m_Board.SetCatchAll(false);
 
-    m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
-    m_LatestEvaluation = 0.5f;
+    loadFen(Chess::DefaultFEN);
 }
 
-void Application::startNewGame() {
+void Application::loadFen(const std::string& fen) {
+    if (fen.empty()) return;
+
     joinThreads();
 
-    m_SideToMove = m_Board.LoadFromFen(Chess::DefaultFEN);
-    m_LatestEvaluation = 0.5f;
-    m_GameOver = false;
-    m_Flipped = false;
+    m_SideToMove = m_Board.LoadFromFen(fen);
+    m_Board.SetEngineColor(m_SideToMove);
+    m_Board.ClearHash();
+
+    updateEvaluation();
+
+    m_GameOver = m_Flipped = false;
     m_LastMove = Chess::Move();
+
+    startPonder();
 
     m_GameOverTimer = 0.f;
     m_GameOverResult = GameOverResult::None;
@@ -278,13 +284,44 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
 
     currentYPos += buttonSize + padding_y * 2.f;
 
+    // analysis mode button
+    m_Buttons.emplace_back(
+        currentXPos, currentYPos,
+        buttonSize, buttonSize,
+        13 - m_AnalysisMode,
+        [this](Button& button) -> void {
+            if (!m_EngineThinking && !m_GameOver) {
+                joinThreads();
+
+                if (m_AnalysisMode) {
+                    const bool oldFlipped = m_Flipped;
+
+                    loadFen(m_AnalysisEntryState);
+                    stopPonder();
+
+                    m_Flipped = oldFlipped;
+                } else {
+                    m_AnalysisEntryState = m_Board.GetFen(m_SideToMove);
+                }
+                
+                m_AnalysisMode ^= 1;
+                button.TextureIndex = 13 - m_AnalysisMode;
+                
+                m_Popup = Popup("analysis mode: " + std::string(m_AnalysisMode ? "true" : "false"));
+            }
+        }
+    );
+
+    currentYPos += buttonSize + padding_y * 2.f;
+
     // board reset button
     m_Buttons.emplace_back(
         currentXPos, static_cast<float>(windowSize.y) - buttonSize - padding_y,
         buttonSize, buttonSize,
         3,
         [this](Button&) -> void {
-            startNewGame();
+            m_AnalysisMode = false;
+            loadFen(Chess::DefaultFEN);
         }
     );
 }
@@ -393,14 +430,7 @@ bool Application::LoadResources(const std::filesystem::path& root) {
 void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
     if (key == sf::Keyboard::Scancode::V) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
-            joinThreads();
-            m_SideToMove = m_Board.LoadFromFen(sf::Clipboard::getString());
-            m_Board.SetEngineColor(m_SideToMove);
-            updateEvaluation();
-            m_GameOver = m_Flipped = false;
-            m_LastMove = Chess::Move();
-            m_Board.ClearHash();
-            startPonder();
+            loadFen(sf::Clipboard::getString());
         }
     }
 
@@ -509,20 +539,34 @@ void Application::doMove(Chess::Move move, bool animate) {
     ) {
         m_SfxPlayer.Play(Sfx::GameEnd);
 
-        if (m_Board.FiftyMoveRule()) {
-            m_GameOverResult = GameOverResult::DrawFiftyMove;
-        } else if (m_Board.HasInsufficientMaterial()) {
-            m_GameOverResult = GameOverResult::DrawInsufficient;
-        } else if (m_Board.isThreefoldRepetition()) {
-            m_GameOverResult = GameOverResult::DrawRepetition;
-        } else if (!m_Board.isUnderCheck(m_SideToMove)) {
-            m_GameOverResult = GameOverResult::Stalemate;
+        if (m_AnalysisMode) {
+            if (m_Board.FiftyMoveRule()) {
+                m_Popup = Popup("[analysis]: draw (50-move rule)", 5.f);
+            } else if (m_Board.HasInsufficientMaterial()) {
+                m_Popup = Popup("[analysis]: draw (insufficient material)", 5.f);
+            } else if (m_Board.isThreefoldRepetition()) {
+                m_Popup = Popup("[analysis]: draw (threefold repetition)", 5.f);
+            } else if (!m_Board.isUnderCheck(m_SideToMove)) {
+                m_Popup = Popup("[analysis]: stalemate", 5.f);
+            } else {
+                m_Popup = Popup("[analysis]: checkmate", 5.f);
+            }
         } else {
-            m_GameOverResult = GameOverResult::Checkmate;
-        }
+            if (m_Board.FiftyMoveRule()) {
+                m_GameOverResult = GameOverResult::DrawFiftyMove;
+            } else if (m_Board.HasInsufficientMaterial()) {
+                m_GameOverResult = GameOverResult::DrawInsufficient;
+            } else if (m_Board.isThreefoldRepetition()) {
+                m_GameOverResult = GameOverResult::DrawRepetition;
+            } else if (!m_Board.isUnderCheck(m_SideToMove)) {
+                m_GameOverResult = GameOverResult::Stalemate;
+            } else {
+                m_GameOverResult = GameOverResult::Checkmate;
+            }
 
-        m_GameOverTimer = 0.001f;
-        spawnGameOverParticles();
+            m_GameOverTimer = 0.001f;
+            spawnGameOverParticles();
+        }
 
         m_GameOver = true;
     }
@@ -588,7 +632,7 @@ void Application::dropPiece(int idx, bool animate) {
     if (it != m_LegalMovesForSelectedPiece.end()) {
         doMove(*it, animate);
 
-        if (!m_GameOver) pollEngineMove();
+        if (!m_GameOver && !m_AnalysisMode) pollEngineMove();
     }
 
     m_SelectedPiece = Chess::NullPos;
@@ -598,7 +642,7 @@ void Application::dropPiece(int idx, bool animate) {
 #pragma region Ponder
 
 void Application::startPonder() {
-    if (!m_Ponder || m_GameOver) return;
+    if (!m_Ponder || m_GameOver || m_AnalysisMode) return;
 
     Chess::Board ponderBoard = m_Board;
     Chess::PieceColor ponderSideToMove = m_SideToMove;
@@ -643,8 +687,8 @@ void Application::Update(float deltaTime) {
     }
 
     if (m_Popup.Timer > 0.f) {
-        m_Popup.Timer = std::max(0.f, m_Popup.Timer - deltaTime);
-        if (m_Popup.Timer == 0.f) m_Popup.Info.clear();
+        m_Popup.Timer -= deltaTime;
+        if (m_Popup.Timer <= 0.f) m_Popup.Info.clear();
     }
 
     if (m_GameOverTimer > 0.f) {
@@ -1000,7 +1044,7 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
 }
 
 void Application::renderButton(sf::RenderTarget& target, const Button& button) const {
-    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / static_cast<float>(m_Buttons.size() + 3);
+    const float IconTextureWidth = static_cast<float>(m_IconTexture.getSize().x) / static_cast<float>(m_Buttons.size() + 4);
     const float IconTextureHeight = static_cast<float>(m_IconTexture.getSize().y);
 
     const float tx = static_cast<float>(button.TextureIndex) * IconTextureWidth;
@@ -1192,6 +1236,13 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
         renderRanksAndFiles(target);
 
         renderEvaluationBar(target);
+
+        if (m_AnalysisMode) {
+            RenderQuad(
+                target, sf::Color(120, 120, 120, 90),
+                sf::Vector2f(m_EvaluationBarWidth, 0.f), sf::Vector2f(Chess::Files, Chess::Ranks) * m_SquareSize
+            );
+        }
     }
 
     /* Highlights */ {
