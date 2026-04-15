@@ -290,7 +290,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         buttonSize, buttonSize,
         13 - m_AnalysisMode,
         [this](Button& button) -> void {
-            if (!m_EngineThinking && !m_GameOver) {
+            if (!m_EngineThinking && (!m_GameOver || m_AnalysisMode)) {
                 joinThreads();
 
                 if (m_AnalysisMode) {
