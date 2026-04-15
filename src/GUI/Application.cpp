@@ -303,10 +303,10 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 } else {
                     m_AnalysisEntryState = m_Board.GetFen(m_SideToMove);
                 }
-                
+
                 m_AnalysisMode ^= 1;
                 button.TextureIndex = 13 - m_AnalysisMode;
-                
+
                 m_Popup = Popup("analysis mode: " + std::string(m_AnalysisMode ? "true" : "false"));
             }
         }
@@ -1332,12 +1332,12 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             sf::Vector2f(m_PanelWidth, target.getSize().y)
         );
 
-        if (m_Popup.isActive()) {
-            renderPopup(target);
-        }
-
         if (m_GameOverResult != GameOverResult::None) {
             renderCheckmateOverlay(target);
+        }
+
+        if (m_Popup.isActive()) {
+            renderPopup(target);
         }
     }
 }
