@@ -52,6 +52,16 @@ namespace Chess {
         constexpr inline const uint8_t BlackQueenSideBit = 0b1000;
     }
 
+    constexpr inline const MoveFlag PromotionFlags[] = {
+        MoveFlag::PromoteToQueen, MoveFlag::PromoteToKnight,
+        MoveFlag::PromoteToRook, MoveFlag::PromoteToBishop
+    };
+
+    constexpr inline const PieceType PromotionTypes[] = {
+        PieceType::Queen, PieceType::Knight,
+        PieceType::Rook, PieceType::Bishop
+    };
+
     constexpr inline const uint16_t PieceValues[] = {
         100, 320, 330, 500, 900, 0
     };
@@ -364,7 +374,7 @@ namespace Chess {
         std::string GetFen(PieceColor sideToMove) const;
 
         void DoMove(Move move);
-        
+
         void FlipSideToMove();
 
         void Perft(int depth, PieceColor sideToMove);

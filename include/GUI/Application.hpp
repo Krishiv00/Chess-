@@ -107,6 +107,9 @@ private:
     void pickPiece(int idx);
     void dropPiece(int idx, bool animate = false);
 
+    void commitPromotion(Chess::MoveFlag promotionFlag);
+    int hitTestPromotionMenu(sf::Vector2i mousePos) const;
+
     void pollEngineMove();
     void updateEvaluation();
 
@@ -122,6 +125,7 @@ private:
     void renderBitboard(sf::RenderTarget& target, uint64_t bitboard, sf::Color color) const;
     void renderPopup(sf::RenderTarget& target) const;
     void renderCheckmateOverlay(sf::RenderTarget& target) const;
+    void renderPromotionMenu(sf::RenderTarget& target, sf::Vector2i mousePos) const;
 
     Chess::Board m_Board;
     Chess::Move m_LastMove;
@@ -162,6 +166,7 @@ private:
     // Game state
     bool m_GameOver{false};
     bool m_Flipped{false};
+    bool m_PromotionSelectionActive{false};
     bool m_EngineThinking{false};
     bool m_HoveringPanel{false};
     bool m_AnalysisMode{false};

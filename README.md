@@ -169,10 +169,11 @@ Resources/
     ├── Capture.wav
     ├── Check.wav
     ├── Game End.wav
-    ├── Place1.wav
-    ├── Place2.wav
+    ├── Move Opp.wav
+    ├── Move Self.wav
+    ├── Notify.wav
     ├── Promotion.wav
-    └── SpecialMove.wav
+    └── Special Move.wav
 ```
 
 ---

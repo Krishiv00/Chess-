@@ -42,10 +42,8 @@ namespace LichessTheme {
     constexpr sf::Color GameOverTitleText = sf::Color(240, 217, 181, 255);
     constexpr sf::Color GameOverSubText = sf::Color(180, 160, 130, 255);
     constexpr sf::Color GameOverParticle[] = {
-        sf::Color(240, 217, 181),
-        sf::Color(181, 136, 99),
-        sf::Color(200, 185, 150),
-        sf::Color(255, 230, 180),
+        sf::Color(240, 217, 181), sf::Color(181, 136, 99),
+        sf::Color(200, 185, 150), sf::Color(255, 230, 180),
         sf::Color(120, 100, 75),
     };
 }
@@ -72,10 +70,8 @@ namespace ChesscomTheme {
     constexpr sf::Color GameOverTitleText = sf::Color(235, 236, 208, 255);
     constexpr sf::Color GameOverSubText = sf::Color(160, 185, 130, 255);
     constexpr sf::Color GameOverParticle[] = {
-        sf::Color(235, 236, 208),
-        sf::Color(115, 149, 82),
-        sf::Color(180, 200, 140),
-        sf::Color(255, 240, 180),
+        sf::Color(235, 236, 208), sf::Color(115, 149, 82),
+        sf::Color(180, 200, 140), sf::Color(255, 240, 180),
         sf::Color(80, 110, 55),
     };
 }
@@ -321,6 +317,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         3,
         [this](Button&) -> void {
             m_AnalysisMode = false;
+            m_PromotionSelectionActive = false;
             loadFen(Chess::DefaultFEN);
         }
     );
@@ -401,12 +398,12 @@ bool Application::LoadResources(const std::filesystem::path& root) {
         return false;
     }
 
-    if (!m_SfxPlayer.LoadFromFile(Sfx::Place1, soundPath / "Place1.wav")) [[unlikely]] {
+    if (!m_SfxPlayer.LoadFromFile(Sfx::MoveSelf, soundPath / "Move Self.wav")) [[unlikely]] {
         std::cerr << "Failed to load sound" << std::endl;
         return false;
     }
 
-    if (!m_SfxPlayer.LoadFromFile(Sfx::Place2, soundPath / "Place2.wav")) [[unlikely]] {
+    if (!m_SfxPlayer.LoadFromFile(Sfx::MoveOpponent, soundPath / "Move Opp.wav")) [[unlikely]] {
         std::cerr << "Failed to load sound" << std::endl;
         return false;
     }
@@ -416,7 +413,12 @@ bool Application::LoadResources(const std::filesystem::path& root) {
         return false;
     }
 
-    if (!m_SfxPlayer.LoadFromFile(Sfx::SpecialMove, soundPath / "SpecialMove.wav")) [[unlikely]] {
+    if (!m_SfxPlayer.LoadFromFile(Sfx::Notify, soundPath / "Notify.wav")) [[unlikely]] {
+        std::cerr << "Failed to load sound" << std::endl;
+        return false;
+    }
+
+    if (!m_SfxPlayer.LoadFromFile(Sfx::SpecialMove, soundPath / "Special Move.wav")) [[unlikely]] {
         std::cerr << "Failed to load sound" << std::endl;
         return false;
     }
@@ -429,7 +431,7 @@ bool Application::LoadResources(const std::filesystem::path& root) {
 
 void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
     if (key == sf::Keyboard::Scancode::V) {
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
+        if (!m_PromotionSelectionActive && sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
             loadFen(sf::Clipboard::getString());
         }
     }
@@ -442,6 +444,18 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
 }
 
 void Application::HandleMouseButtonPressed(sf::Vector2i position) {
+    if (m_PromotionSelectionActive) {
+        if (const int hit = hitTestPromotionMenu(position)) {
+            commitPromotion(Chess::PromotionFlags[hit - 1]);
+        }
+
+        m_PromotionSelectionActive = false;
+        m_SelectedPiece = Chess::NullPos;
+        m_LegalMovesForSelectedPiece.clear();
+
+        return;
+    }
+
     for (Button& button : m_Buttons) {
         if (button.Hovered) {
             if (button.Callback) button.Callback(button);
@@ -455,10 +469,13 @@ void Application::HandleMouseButtonPressed(sf::Vector2i position) {
 }
 
 void Application::HandleMouseButtonReleased(sf::Vector2i position) {
+    if (m_PromotionSelectionActive) return;
     onMouseButtonSignal(position, true);
 }
 
 void Application::HandleMouseMoved(sf::Vector2i position) {
+    if (m_PromotionSelectionActive) return;
+
     for (Button& button : m_Buttons) {
         button.Hovered = false;
     }
@@ -486,6 +503,45 @@ void Application::HandleMouseLeftWindow() {
     }
 
     m_HoveringPanel = false;
+}
+
+void Application::commitPromotion(Chess::MoveFlag promotionFlag) {
+    const uint8_t landingPos = m_SelectedPiece + (m_SideToMove == Chess::PieceColor::White ? -Chess::Files : Chess::Files);
+
+    for (const Chess::Move& m : m_LegalMovesForSelectedPiece) {
+        if (
+            m.StartingSquare == m_SelectedPiece && m.TargetSquare == landingPos &&
+            Chess::HasFlag(m.Flag, promotionFlag)
+        ) {
+            doMove(m, true);
+            if (!m_GameOver && !m_AnalysisMode) pollEngineMove();
+
+            return;
+        }
+    }
+}
+
+int Application::hitTestPromotionMenu(sf::Vector2i mousePos) const {
+    if (!m_PromotionSelectionActive) return -1;
+
+    const float menuX = mapFile(Chess::ToFile(m_SelectedPiece)) * m_SquareSize + m_EvaluationBarWidth;
+    const float visualRank = mapRank(Chess::ToRank(m_SelectedPiece) + (m_SideToMove == Chess::PieceColor::White ? -1 : 1));
+
+    const bool openDown = visualRank < Chess::Ranks / 2;
+    const float cardTop = openDown ? visualRank * m_SquareSize : (visualRank - 3.f) * m_SquareSize;
+
+    for (int i = 0; i < 4; ++i) {
+        const float slotY = openDown ? (visualRank + i) * m_SquareSize : (visualRank - i) * m_SquareSize;
+
+        if (
+            mousePos.x >= menuX && mousePos.x < menuX + m_SquareSize &&
+            mousePos.y >= slotY && mousePos.y < slotY + m_SquareSize
+        ) {
+            return i + 1;
+        }
+    }
+
+    return 0;
 }
 
 #pragma region Gameplay
@@ -591,7 +647,8 @@ void Application::doMove(Chess::Move move, bool animate) {
     } else if (HasFlag(move.Flag, Chess::MoveFlag::Capture)) {
         m_SfxPlayer.Play(Sfx::Capture);
     } else {
-        m_SfxPlayer.Play((std::rand() % 2) ? Sfx::Place1 : Sfx::Place2);
+        const bool isSelfMove = (m_SideToMove == Chess::PieceColor::Black) ^ m_Flipped;
+        m_SfxPlayer.Play(isSelfMove ? Sfx::MoveSelf : Sfx::MoveOpponent);
     }
 
     m_LastMove = move;
@@ -630,6 +687,12 @@ void Application::dropPiece(int idx, bool animate) {
     );
 
     if (it != m_LegalMovesForSelectedPiece.end()) {
+        if (Chess::isPromotion(it->Flag)) {
+            m_PromotionSelectionActive = true;
+            m_SfxPlayer.Play(Sfx::Notify);
+            return;
+        }
+
         doMove(*it, animate);
 
         if (!m_GameOver && !m_AnalysisMode) pollEngineMove();
@@ -1228,6 +1291,66 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
     target.draw(subText);
 }
 
+void Application::renderPromotionMenu(sf::RenderTarget& target, sf::Vector2i mousePos) const {
+    const int boardRank = Chess::ToRank(m_SelectedPiece) + (m_SideToMove == Chess::PieceColor::White ? -1 : 1);
+    const int visualRank = mapRank(boardRank);
+
+    const float menuX = mapFile(Chess::ToFile(m_SelectedPiece)) * m_SquareSize + m_EvaluationBarWidth;
+
+    const bool openDown = visualRank < Chess::Ranks / 2;
+
+    const float boardLeft = m_EvaluationBarWidth;
+    const float boardRight = boardLeft + Chess::Files * m_SquareSize;
+    const float boardHeight = static_cast<float>(target.getSize().y);
+
+    const float cardTop = openDown ? visualRank * m_SquareSize : (visualRank - 3.f) * m_SquareSize;
+    const float cardBottom = cardTop + 4.f * m_SquareSize;
+
+    const sf::Color dim(0, 0, 0, 130);
+
+    if (menuX > boardLeft) {
+        RenderQuad(
+            target, dim,
+            sf::Vector2f(boardLeft, 0.f), sf::Vector2f(menuX - boardLeft, boardHeight)
+        );
+    }
+
+    if (menuX + m_SquareSize < boardRight) {
+        RenderQuad(
+            target, dim,
+            sf::Vector2f(menuX + m_SquareSize, 0.f), sf::Vector2f(boardRight - menuX - m_SquareSize, boardHeight)
+        );
+    }
+
+    if (cardTop > 0.f) {
+        RenderQuad(
+            target, dim,
+            sf::Vector2f(menuX, 0.f), sf::Vector2f(m_SquareSize, cardTop)
+        );
+    }
+
+    if (cardBottom < boardHeight) {
+        RenderQuad(
+            target, dim,
+            sf::Vector2f(menuX, cardBottom), sf::Vector2f(m_SquareSize, boardHeight - cardBottom)
+        );
+    }
+
+    RenderRoundedQuad(
+        target, sf::Color(255, 255, 255, 245),
+        sf::Vector2f(menuX, cardTop), sf::Vector2f(m_SquareSize, 4.f * m_SquareSize),
+        0.12f
+    );
+
+    unsigned int i = 0u;
+    for (Chess::PieceType promotionType : Chess::PromotionTypes) {
+        const float y = openDown ? (visualRank + i) * m_SquareSize : (visualRank - i) * m_SquareSize;
+        renderPiece(target, Chess::Piece{promotionType, m_SideToMove}, menuX, y);
+
+        ++i;
+    }
+}
+
 void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) const {
     const float halfSquareSize = m_SquareSize * 0.5f;
     const bool mouseHeld = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
@@ -1338,6 +1461,10 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
 
         if (m_GameOverResult != GameOverResult::None) {
             renderCheckmateOverlay(target);
+        }
+
+        if (m_PromotionSelectionActive) {
+            renderPromotionMenu(target, mousePosition);
         }
 
         if (m_Popup.isActive()) {

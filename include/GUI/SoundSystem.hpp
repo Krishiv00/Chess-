@@ -10,8 +10,9 @@ enum class Sfx {
     Check,
     GameEnd,
     Promotion,
-    Place1,
-    Place2,
+    Notify,
+    MoveSelf,
+    MoveOpponent,
     SpecialMove,
     BoardFlip = SpecialMove,
     Count
