@@ -1101,7 +1101,10 @@ bool Board::FiftyMoveRule() const noexcept {
 bool Board::isThreefoldRepetition() const noexcept {
     int count = 1;
 
-    for (int i = GameContext::GameHistory.size() - 2; i >= 0; --i) {
+    const int histSize = GameContext::GameHistory.size();
+    const int lookback = std::min<int>(histSize - 1, m_HalfMoveClock);
+
+    for (int i = histSize - 2; i >= histSize - 1 - lookback; --i) {
         if (GameContext::GameHistory[i] == m_Hash && ++count >= 3) return true;
     }
 

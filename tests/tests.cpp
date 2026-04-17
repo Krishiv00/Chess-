@@ -27,7 +27,7 @@ static unsigned int countCheckMoves(Chess::Board& board, Chess::PieceColor side)
     for (unsigned int i = 0; i < n; ++i) {
         if (Chess::HasFlag(moves[i].Flag, Chess::MoveFlag::Check)) ++checks;
     }
-    
+
     return checks;
 }
 
@@ -79,6 +79,28 @@ static Chess::PieceColor load(Chess::Board& board, const std::string& fen) {
     return board.LoadFromFen(fen);
 }
 
+static bool doMove(Chess::Board& board, Chess::PieceColor side, const std::string& uci) {
+    const int fromFile = uci[0] - 'a';
+    const int fromRank = Chess::Ranks - 1 - (uci[1] - '1');
+    const int toFile = uci[2] - 'a';
+    const int toRank = Chess::Ranks - 1 - (uci[3] - '1');
+
+    const int from = Chess::To2DIndex(fromRank, fromFile);
+    const int to = Chess::To2DIndex(toRank, toFile);
+
+    Chess::Move moves[Chess::MaxLegalMoves];
+    unsigned int n = 0;
+    board.getAllLegalMoves(side, moves, n);
+
+    for (unsigned int i = 0; i < n; ++i) {
+        if (moves[i].StartingSquare == from && moves[i].TargetSquare == to) {
+            board.DoMove(moves[i]);
+            return true;
+        }
+    }
+    return false;
+}
+
 #pragma region Register Tests
 
 static void RegisterTest(const std::string& name, std::function<bool()> fn) {
@@ -109,7 +131,7 @@ static void RegisterTests() {
     );
 
     // -----------------------------------------------------------------------
-    // Position 2: Kiwipete — stress tests castling, en-passant, promotions
+    // Position 2: Kiwipete - stress tests castling, en-passant, promotions
     // -----------------------------------------------------------------------
     RegisterPerftTest(
         "Position 2", "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
@@ -239,7 +261,7 @@ static void RegisterTests() {
     });
 
     // -----------------------------------------------------------------------
-    // Pawn direct check — push that lands and attacks the king diagonally
+    // Pawn direct check - push that lands and attacks the king diagonally
     // Pawn e5 -> e6 attacks d7; king placed on d7 so the push is a check.
     // -----------------------------------------------------------------------
     RegisterTest("CheckFlag: White pawn direct check", []() {
@@ -324,7 +346,7 @@ static void RegisterTests() {
 
     RegisterTest("CheckFlag: Rook blocked no check", []() {
         Chess::Board b; load(b, "2P4k/8/8/8/8/8/8/R3K3 w - - 0 1");
-        // Pawn on c8 blocks rank 8 path from a8 to h8 — Ra1->a8 should NOT be check on h8
+        // Pawn on c8 blocks rank 8 path from a8 to h8 - Ra1->a8 should NOT be check on h8
         return findMove(b, Chess::PieceColor::White,
             Chess::To2DIndex(7, 0),  // a1
             Chess::To2DIndex(0, 0),  // a8
@@ -511,7 +533,7 @@ static void RegisterTests() {
     });
 
     // -----------------------------------------------------------------------
-    // Check count correctness — total checks in a position must match
+    // Check count correctness - total checks in a position must match
     // -----------------------------------------------------------------------
     RegisterTest("CheckCount: Starting position has 0 check moves", []() {
         Chess::Board b; auto s = load(b, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -526,7 +548,7 @@ static void RegisterTests() {
     });
 
     // -----------------------------------------------------------------------
-    // In check — legal moves only
+    // In check - legal moves only
     // -----------------------------------------------------------------------
     RegisterTest("InCheck: Only legal moves generated when in check", []() {
         Chess::Board b; auto s = load(b, "4R3/8/8/8/8/8/8/k3K3 b - - 0 1");
@@ -544,7 +566,7 @@ static void RegisterTests() {
     });
 
     // -----------------------------------------------------------------------
-    // Pins — pinned piece cannot move if it would expose king to check
+    // Pins - pinned piece cannot move if it would expose king to check
     // -----------------------------------------------------------------------
     RegisterTest("Pin: Pinned piece moves are legal only along pin", []() {
         // Bishop pinned along rank 1 by rook a1. Only moves along rank are legal.
@@ -576,7 +598,7 @@ static void RegisterTests() {
     });
 
     RegisterTest("Edge: Castling not allowed through attacked square", []() {
-        // Black rook on f8 attacks f1 — white cannot castle kingside (through f1)
+        // Black rook on f8 attacks f1 - white cannot castle kingside (through f1)
         Chess::Board b; load(b, "4k3/5r2/8/8/8/8/8/4K2R w K - 0 1");
         Chess::Move moves[Chess::MaxLegalMoves];
         unsigned int n = 0;
@@ -628,6 +650,168 @@ static void RegisterTests() {
             "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - - 0 1");
         unsigned int n = countMoves(b, s);
         return n <= Chess::MaxLegalMoves;
+    });
+
+    // =======================================================================
+    // Draw detection tests
+    // =======================================================================
+
+    // -----------------------------------------------------------------------
+    // FiftyMoveRule
+    // The half-move clock is the 5th field in FEN. The rule triggers at >= 100.
+    // -----------------------------------------------------------------------
+
+    // Clock at exactly 100 - must be draw.
+    RegisterTest("Draw: FiftyMove clock=100 is draw", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/8 w - - 100 1");
+        return b.FiftyMoveRule();
+    });
+
+    // Clock at 99 - must NOT be draw yet.
+    RegisterTest("Draw: FiftyMove clock=99 is not draw", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/8 w - - 99 1");
+        return !b.FiftyMoveRule();
+    });
+
+    // Clock at 101 - also a draw (>= 100).
+    RegisterTest("Draw: FiftyMove clock=101 is draw", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/8 w - - 101 1");
+        return b.FiftyMoveRule();
+    });
+
+    // A pawn move resets the clock, so immediately after loading clock=0, not a draw.
+    RegisterTest("Draw: FiftyMove clock=0 is not draw", []() {
+        Chess::Board b;
+        load(b, Chess::DefaultFEN);
+        return !b.FiftyMoveRule();
+    });
+
+    // -----------------------------------------------------------------------
+    // Threefold repetition
+    // -----------------------------------------------------------------------
+
+    RegisterTest("Draw: Threefold repetition detected after 3rd occurrence", []() {
+        Chess::Board b;
+        Chess::PieceColor side = load(b, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+        // side == White. GameHistory has 1 entry (hash of initial position).
+
+        // Round trip 1: white Ke1->d1, black Ke8->d8, white Kd1->e1, black Kd8->e8
+        // After this, the initial position hash appears a 2nd time - not yet a draw.
+        if (!doMove(b, Chess::PieceColor::White, "e1d1")) return false;
+        if (!doMove(b, Chess::PieceColor::Black, "e8d8")) return false;
+        if (!doMove(b, Chess::PieceColor::White, "d1e1")) return false;
+        if (!doMove(b, Chess::PieceColor::Black, "d8e8")) return false;
+        if (b.isThreefoldRepetition()) return false; // 2 occurrences, not yet
+
+        // Round trip 2: same moves again -> 3rd occurrence
+        if (!doMove(b, Chess::PieceColor::White, "e1d1")) return false;
+        if (!doMove(b, Chess::PieceColor::Black, "e8d8")) return false;
+        if (!doMove(b, Chess::PieceColor::White, "d1e1")) return false;
+        if (!doMove(b, Chess::PieceColor::Black, "d8e8")) return false;
+
+        return b.isThreefoldRepetition(); // 3rd occurrence: must be draw
+    });
+
+    // Two occurrences is not yet a draw.
+    RegisterTest("Draw: Threefold not triggered after only 2 occurrences", []() {
+        Chess::Board b;
+        load(b, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+
+        // One round trip -> 2nd occurrence.
+        if (!doMove(b, Chess::PieceColor::White, "e1d1")) return false;
+        if (!doMove(b, Chess::PieceColor::Black, "e8d8")) return false;
+        if (!doMove(b, Chess::PieceColor::White, "d1e1")) return false;
+        if (!doMove(b, Chess::PieceColor::Black, "d8e8")) return false;
+
+        return !b.isThreefoldRepetition(); // must NOT be a draw yet
+    });
+
+    // A fresh board (single occurrence) is never a repetition draw.
+    RegisterTest("Draw: Threefold not triggered on fresh load", []() {
+        Chess::Board b;
+        load(b, "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+        return !b.isThreefoldRepetition();
+    });
+
+    // -----------------------------------------------------------------------
+    // Insufficient material
+    // -----------------------------------------------------------------------
+
+    // K vs K
+    RegisterTest("Draw: Insufficient K vs K", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/8 w - - 0 1");
+        return b.HasInsufficientMaterial();
+    });
+
+    // K+B vs K - bishop alone cannot force mate
+    RegisterTest("Draw: Insufficient K+B vs K", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/5B2 w - - 0 1");
+        return b.HasInsufficientMaterial();
+    });
+
+    // K+N vs K - knight alone cannot force mate
+    RegisterTest("Draw: Insufficient K+N vs K", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/5N2 w - - 0 1");
+        return b.HasInsufficientMaterial();
+    });
+
+    // K+N+N vs K - two knights cannot force mate (the engine treats this as draw)
+    RegisterTest("Draw: Insufficient K+N+N vs K", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/4NN2 w - - 0 1");
+        return b.HasInsufficientMaterial();
+    });
+
+    // K+N vs K+N - neither side has mating material
+    RegisterTest("Draw: Insufficient K+N vs K+N", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/5n2/8/4K3/8/5N2 w - - 0 1");
+        return b.HasInsufficientMaterial();
+    });
+
+    // K+B vs K+B same colour - bishops on same colour squares, both light (a1=dark,b1=light).
+    // White bishop on f1 (light square: rank 7, file 5 -> (7+5)%2=0 -> light).
+    // Black bishop on c8 (light square: rank 0, file 2 -> (0+2)%2=0 -> light).
+    // Both on light squares -> draw.
+    RegisterTest("Draw: Insufficient K+B vs K+B same colour squares", []() {
+        Chess::Board b;
+        load(b, "2b1k3/8/8/8/8/8/8/4KB2 w - - 0 1");
+        return b.HasInsufficientMaterial();
+    });
+
+    // K+B vs K+B different colour squares - one light, one dark -> NOT a draw.
+    // White bishop on f1 (light), black bishop on d8 (dark: rank 0, file 3 -> (0+3)%2=1 -> dark).
+    RegisterTest("Draw: Sufficient K+B vs K+B different colour squares", []() {
+        Chess::Board b;
+        load(b, "3bk3/8/8/8/8/8/8/4KB2 w - - 0 1");
+        return !b.HasInsufficientMaterial();
+    });
+
+    // K+Q vs K - queen is mating material
+    RegisterTest("Draw: Sufficient K+Q vs K is not draw", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/5Q2 w - - 0 1");
+        return !b.HasInsufficientMaterial();
+    });
+
+    // K+R vs K - rook is mating material
+    RegisterTest("Draw: Sufficient K+R vs K is not draw", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/8/5R2 w - - 0 1");
+        return !b.HasInsufficientMaterial();
+    });
+
+    // K+P vs K - pawn can promote, so it's not insufficient
+    RegisterTest("Draw: Sufficient K+P vs K is not draw", []() {
+        Chess::Board b;
+        load(b, "8/8/4k3/8/8/4K3/5P2/8 w - - 0 1");
+        return !b.HasInsufficientMaterial();
     });
 }
 

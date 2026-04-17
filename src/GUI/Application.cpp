@@ -94,6 +94,8 @@ void Application::loadFen(const std::string& fen) {
 
     joinThreads();
 
+    m_Board.NewGame();
+
     m_SideToMove = m_Board.LoadFromFen(fen);
     m_Board.SetEngineColor(m_SideToMove);
     m_Board.ClearHash();
