@@ -6,7 +6,7 @@
 
 namespace Utils {
     [[nodiscard]]
-    static float ExponentiallyMoveTo(float from, float to, float speed, float snapThreshold) noexcept {
+    static float ExponentiallyMoveTo(float from, float to, float speed, float snapThreshold = 0.002f) noexcept {
         const float diff = to - from;
         return std::fabs(diff) < snapThreshold ? to : (from + diff * (1.f - std::exp(-speed)));
     }
@@ -476,6 +476,23 @@ void Application::HandleMouseButtonReleased(sf::Vector2i position) {
 void Application::HandleMouseMoved(sf::Vector2i position) {
     if (m_PromotionSelectionActive) return;
 
+    if (hasSelectedPiece()) {
+        const sf::Vector2f delta(
+            static_cast<float>(position.x - m_LastMousePosition.x),
+            static_cast<float>(position.y - m_LastMousePosition.y)
+        );
+
+        const float speed = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+
+        if (speed > 0.5f) {
+            constexpr float MaxTilt = 0.45f; // (~26 degrees)
+            const float targetTilt = (delta.x / speed) * std::min(speed / 18.f, 1.f) * MaxTilt;
+            m_DragTilt = targetTilt;
+        }
+    }
+
+    m_LastMousePosition = position;
+
     for (Button& button : m_Buttons) {
         button.Hovered = false;
     }
@@ -775,15 +792,19 @@ void Application::Update(float deltaTime) {
     }
 
     m_CurrentEvaluation = Utils::ExponentiallyMoveTo(
-        m_CurrentEvaluation, m_LatestEvaluation, 7.5f * deltaTime, 0.002f
+        m_CurrentEvaluation, m_LatestEvaluation, 7.5f * deltaTime
     );
 
     m_PanelBrightness = Utils::ExponentiallyMoveTo(
-        m_PanelBrightness, m_HoveringPanel, 20.f * deltaTime, 0.002f
+        m_PanelBrightness, m_HoveringPanel, 20.f * deltaTime
     );
 
     m_AnalyisModeOverlay_t = Utils::ExponentiallyMoveTo(
-        m_AnalyisModeOverlay_t, m_AnalysisMode, 7.5f * deltaTime, 0.002f
+        m_AnalyisModeOverlay_t, m_AnalysisMode, 7.5f * deltaTime
+    );
+
+    m_DragTilt = Utils::ExponentiallyMoveTo(
+        m_DragTilt, 0.f, 7.5f * deltaTime
     );
 }
 
@@ -976,34 +997,34 @@ void Application::renderRanksAndFiles(sf::RenderTarget& target) const {
     }
 }
 
-void Application::renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y) const {
+void Application::renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y, float angle) const {
     const float PieceTextureWidth = static_cast<float>(m_PieceTexture.getSize().x) / 6.f;
     const float PieceTextureHeight = static_cast<float>(m_PieceTexture.getSize().y) / 2.f;
 
     const float tx = static_cast<float>(piece.Type) * PieceTextureWidth;
     const float ty = static_cast<float>(piece.Color) * PieceTextureHeight;
 
+    const float cx = x + m_SquareSize * 0.5f;
+    const float cy = y + m_SquareSize * 0.5f;
+
+    const float cosA = std::cos(angle);
+    const float sinA = std::sin(angle);
+
+    const auto rotate = [&](float px, float py) -> sf::Vector2f {
+        const float dx = px - cx;
+        const float dy = py - cy;
+
+        const float rx = dx * cosA - dy * sinA;
+        const float ry = dx * sinA + dy * cosA;
+
+        return sf::Vector2f(cx + rx, cy + ry);
+        };
+
     const sf::Vertex vertices[] = {
-        sf::Vertex(
-            sf::Vector2f(x, y),
-            sf::Color::White,
-            sf::Vector2f(tx, ty)
-        ),
-            sf::Vertex(
-                sf::Vector2f(x + m_SquareSize, y),
-                sf::Color::White,
-                sf::Vector2f(tx + PieceTextureWidth, ty)
-            ),
-            sf::Vertex(
-                sf::Vector2f(x, y + m_SquareSize),
-                sf::Color::White,
-                sf::Vector2f(tx, ty + PieceTextureHeight)
-            ),
-            sf::Vertex(
-                sf::Vector2f(x + m_SquareSize, y + m_SquareSize),
-                sf::Color::White,
-                sf::Vector2f(tx + PieceTextureWidth, ty + PieceTextureHeight)
-            )
+        sf::Vertex(rotate(x, y), sf::Color::White, sf::Vector2f(tx, ty)),
+        sf::Vertex(rotate(x + m_SquareSize, y), sf::Color::White, sf::Vector2f(tx + PieceTextureWidth, ty)),
+        sf::Vertex(rotate(x, y + m_SquareSize), sf::Color::White, sf::Vector2f(tx, ty + PieceTextureHeight)),
+        sf::Vertex(rotate(x + m_SquareSize, y + m_SquareSize), sf::Color::White, sf::Vector2f(tx + PieceTextureWidth, ty + PieceTextureHeight))
     };
 
     target.draw(vertices, 4, sf::PrimitiveType::TriangleStrip, &m_PieceTexture);
@@ -1030,16 +1051,13 @@ void Application::renderPieces(sf::RenderTarget& target, bool mouseHeld) const {
             if ((occupancyMap & Chess::IndexToMask(idx)) == 0ull) continue;
 
             // skip rendering this piece if its being animated
-            bool found = false;
-
-            for (const PieceMoveAnim& anim : m_PieceAnimations) {
-                if (anim.Move.TargetSquare == idx) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (found) continue;
+            if (
+                std::any_of(m_PieceAnimations.begin(), m_PieceAnimations.end(),
+                    [idx](const PieceMoveAnim& anim) -> bool {
+                        return anim.Move.TargetSquare == idx;
+                    }
+                )
+            ) continue;
 
             renderPiece(target, m_Board.GetPieceAt(idx), x, y);
         }
@@ -1426,11 +1444,16 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
                 mapFile(Chess::ToFile(anim.Move.StartingSquare)), mapRank(Chess::ToRank(anim.Move.StartingSquare))
             );
 
-            const sf::Vector2f position = (start + (end - start) * anim.Timer) * m_SquareSize;
+            const sf::Vector2f dir = end - start;
+            const sf::Vector2f position = (start + dir * anim.Timer) * m_SquareSize;
+
+            const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+            const float animTilt = len ? -dir.x / len * 1.2f * anim.Timer * (1.f - anim.Timer) : 0.f;
 
             renderPiece(
                 target, m_Board.GetPieceAt(anim.Move.TargetSquare),
-                position.x + m_EvaluationBarWidth, position.y
+                position.x + m_EvaluationBarWidth, position.y,
+                animTilt
             );
         }
 
@@ -1439,7 +1462,8 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             renderPiece(
                 target, m_Board.GetPieceAt(m_SelectedPiece),
                 static_cast<float>(mousePosition.x) - halfSquareSize,
-                static_cast<float>(mousePosition.y) - halfSquareSize
+                static_cast<float>(mousePosition.y) - halfSquareSize,
+                m_DragTilt
             );
         }
     }

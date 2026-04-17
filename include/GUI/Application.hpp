@@ -117,7 +117,7 @@ private:
     sf::VertexArray generateCheckerboardMesh(float squareSize, float offset_x, const sf::Color* colors);
 
     void renderRanksAndFiles(sf::RenderTarget& target) const;
-    void renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y) const;
+    void renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y, float angle = 0.f) const;
     void renderPieces(sf::RenderTarget& target, bool mouseHeld) const;
     void renderEvaluationBar(sf::RenderTarget& target) const;
     void renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mousePosition) const;
@@ -146,6 +146,7 @@ private:
     float m_PanelWidth;
     float m_PanelBrightness{0.f};
     float m_AnalyisModeOverlay_t{0.f};
+    float m_DragTilt{0.f};
 
     float m_CurrentEvaluation{0.5f};
     float m_LatestEvaluation{0.5f};
@@ -157,6 +158,8 @@ private:
     std::string m_AnalysisEntryState{Chess::DefaultFEN};
 
     sf::VertexArray m_CheckerboardMesh;
+
+    sf::Vector2i m_LastMousePosition;
 
     // Multithreading
     std::thread m_SearchThread;
