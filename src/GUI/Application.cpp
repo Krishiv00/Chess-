@@ -1184,15 +1184,15 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
     if (buttonFocused && !button.Note.empty()) {
         const sf::Vector2u windowSize = target.getSize();
 
-        constexpr float PaddingH = 11.f;
-        constexpr float PaddingV = 8.f;
-        constexpr float Gap = 10.f;
-        constexpr float ArrowHalf = 5.f;
-        constexpr float ArrowDepth = 5.f;
-        constexpr float MaxBubbleW = 130.f;
+        const float paddingH = m_SquareSize * 0.09f;
+        const float paddingV = m_SquareSize * 0.07f;
+        const float gap = m_SquareSize * 0.08f;
+        const float arrowHalf = m_SquareSize * 0.04f;
+        const float arrowDepth = m_SquareSize * 0.04f;
+        const float maxBubbleW = m_SquareSize * 1.1f;
 
         const unsigned int charSize = static_cast<unsigned int>(m_SquareSize * 0.175f);
-        const unsigned int fontSize = std::max(11u, std::min(charSize, 14u));
+        const unsigned int fontSize = static_cast<unsigned int>(m_SquareSize * 0.145f);
 
         sf::Text text(m_Font, button.Note, fontSize);
         text.setStyle(sf::Text::Style::Bold);
@@ -1203,10 +1203,10 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
             std::string word, line;
 
             while (words >> word) {
-                std::string test = line.empty() ? word : (line + ' ' + word);
+                const std::string test = line.empty() ? word : (line + ' ' + word);
                 sf::Text probe(m_Font, test, fontSize);
                 probe.setStyle(sf::Text::Style::Bold);
-                if (!line.empty() && word.size() > 1 && probe.getLocalBounds().size.x + PaddingH * 2.f > MaxBubbleW) {
+                if (!line.empty() && word.size() > 1 && probe.getLocalBounds().size.x + paddingH * 2.f > maxBubbleW) {
                     wrappedNote += line + '\n';
                     line = word;
                 } else {
@@ -1219,13 +1219,13 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
 
         text.setString(wrappedNote);
 
-        const sf::FloatRect tb = text.getLocalBounds();
-        const float bubbleW = tb.size.x + PaddingH * 2.f;
-        const float bubbleH = tb.size.y + PaddingV * 2.f;
+        const sf::FloatRect bounds = text.getLocalBounds();
+        const float bubbleW = bounds.size.x + paddingH * 2.f;
+        const float bubbleH = bounds.size.y + paddingV * 2.f;
 
         const float buttonCY = button.Position_Y + button.Height * 0.5f;
 
-        float bubbleX = button.Position_X - Gap - ArrowDepth - bubbleW;
+        float bubbleX = button.Position_X - gap - arrowDepth - bubbleW;
         float bubbleY = buttonCY - bubbleH * 0.5f;
 
         const float margin = 4.f;
@@ -1234,26 +1234,26 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
 
         const float arrowTipY = std::clamp(
             buttonCY,
-            bubbleY + ArrowHalf + 6.f,
-            bubbleY + bubbleH - ArrowHalf - 6.f
+            bubbleY + arrowHalf + 6.f,
+            bubbleY + bubbleH - arrowHalf - 6.f
         );
 
         RenderRoundedQuad(target, Theme::OverlayPill, sf::Vector2f(bubbleX, bubbleY), sf::Vector2f(bubbleW, bubbleH), 0.18f);
 
         const float arrowBaseX = bubbleX + bubbleW;
-        const float arrowTipX = arrowBaseX + ArrowDepth;
+        const float arrowTipX = arrowBaseX + arrowDepth;
 
         const sf::Vertex arrow[] = {
-            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY - ArrowHalf), Theme::OverlayPill),
-            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY + ArrowHalf), Theme::OverlayPill),
+            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY - arrowHalf), Theme::OverlayPill),
+            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY + arrowHalf), Theme::OverlayPill),
             sf::Vertex(sf::Vector2f(arrowTipX, arrowTipY), Theme::OverlayPill),
         };
 
         target.draw(arrow, 3, sf::PrimitiveType::Triangles);
 
         text.setFillColor(Theme::TextPrimary);
-        text.setOrigin(tb.position);
-        text.setPosition(sf::Vector2f(bubbleX + PaddingH, bubbleY + PaddingV));
+        text.setOrigin(bounds.position);
+        text.setPosition(sf::Vector2f(bubbleX + paddingH, bubbleY + paddingV));
 
         target.draw(text);
     }
