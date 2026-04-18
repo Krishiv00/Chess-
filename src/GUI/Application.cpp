@@ -329,7 +329,6 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         buttonSize, buttonSize,
         3,
         [this](Button&) -> void {
-            m_InspectionMode = false;
             m_PromotionSelectionActive = false;
             loadFen(Chess::DefaultFEN);
         },
