@@ -712,6 +712,8 @@ void Application::onMouseButtonSignal(sf::Vector2i position, bool released) {
 }
 
 void Application::pickPiece(int idx) {
+    if (m_EngineThinking) return;
+
     // if current idx has a piece of mover's color
     if (m_Board.GetOccupancyMap(m_SideToMove) & Chess::IndexToMask(idx)) {
         m_SelectedPiece = idx;
