@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include "GUI/Application.hpp"
 
@@ -25,23 +26,23 @@ namespace LichessTheme {
         sf::Color(240, 217, 181), sf::Color(181, 136, 99)
     };
 
+    constexpr sf::Color LastMoveHighlight = sf::Color(155, 200, 0, 105);
+    constexpr sf::Color LegalMoveHighlight = sf::Color(20, 85, 29, 128);
+
     constexpr sf::Color EvaluationBar[] = {
         sf::Color(255, 255, 255), sf::Color(64, 61, 57)
     };
 
-    constexpr sf::Color LastMoveHighlight = sf::Color(155, 200, 0, 105);
-    constexpr sf::Color LegalMoveHighlight = sf::Color(20, 85, 29, 128);
+    constexpr sf::Color Background = sf::Color(48, 46, 43, 255);
+    constexpr sf::Color SurfaceRaised = sf::Color(42, 40, 37, 248);
+    constexpr sf::Color SurfaceOverlay = sf::Color(18, 17, 15, 195);
 
-    constexpr sf::Color PopupBackground = sf::Color(28, 27, 25, 230);
-    constexpr sf::Color PopupText = sf::Color(240, 217, 181);
+    constexpr sf::Color TextPrimary = sf::Color(240, 217, 181, 255);
+    constexpr sf::Color TextSecondary = sf::Color(180, 160, 130, 255);
 
-    constexpr sf::Color Background = sf::Color(48, 46, 43);
+    constexpr sf::Color OverlayPill = sf::Color(28, 27, 25, 230);
 
-    constexpr sf::Color GameOverOverlayBg = sf::Color(18, 17, 15, 195);
-    constexpr sf::Color GameOverCardBg = sf::Color(42, 40, 37, 248);
-    constexpr sf::Color GameOverTitleText = sf::Color(240, 217, 181, 255);
-    constexpr sf::Color GameOverSubText = sf::Color(180, 160, 130, 255);
-    constexpr sf::Color GameOverParticle[] = {
+    constexpr sf::Color Particle[] = {
         sf::Color(240, 217, 181), sf::Color(181, 136, 99),
         sf::Color(200, 185, 150), sf::Color(255, 230, 180),
         sf::Color(120, 100, 75),
@@ -53,23 +54,23 @@ namespace ChesscomTheme {
         sf::Color(235, 236, 208), sf::Color(115, 149, 82)
     };
 
+    constexpr sf::Color LastMoveHighlight = sf::Color(255, 255, 52, 128);
+    constexpr sf::Color LegalMoveHighlight = sf::Color(2, 1, 0, 36);
+
     constexpr sf::Color EvaluationBar[] = {
         sf::Color(255, 255, 255), sf::Color(64, 61, 57)
     };
 
-    constexpr sf::Color LastMoveHighlight = sf::Color(255, 255, 52, 128);
-    constexpr sf::Color LegalMoveHighlight = sf::Color(2, 1, 0, 36);
+    constexpr sf::Color Background = sf::Color(48, 46, 43, 255);
+    constexpr sf::Color SurfaceRaised = sf::Color(40, 46, 36, 248);
+    constexpr sf::Color SurfaceOverlay = sf::Color(18, 17, 15, 195);
 
-    constexpr sf::Color PopupBackground = sf::Color(28, 27, 25, 230);
-    constexpr sf::Color PopupText = sf::Color(235, 236, 208);
+    constexpr sf::Color TextPrimary = sf::Color(235, 236, 208, 255);
+    constexpr sf::Color TextSecondary = sf::Color(160, 185, 130, 255);
 
-    constexpr sf::Color Background = sf::Color(48, 46, 43);
+    constexpr sf::Color OverlayPill = sf::Color(32, 38, 28, 230);
 
-    constexpr sf::Color GameOverOverlayBg = sf::Color(18, 17, 15, 195);
-    constexpr sf::Color GameOverCardBg = sf::Color(40, 46, 36, 248);
-    constexpr sf::Color GameOverTitleText = sf::Color(235, 236, 208, 255);
-    constexpr sf::Color GameOverSubText = sf::Color(160, 185, 130, 255);
-    constexpr sf::Color GameOverParticle[] = {
+    constexpr sf::Color Particle[] = {
         sf::Color(235, 236, 208), sf::Color(115, 149, 82),
         sf::Color(180, 200, 140), sf::Color(255, 240, 180),
         sf::Color(80, 110, 55),
@@ -154,7 +155,8 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         [this](Button&) -> void {
             m_Flipped ^= true;
             m_SfxPlayer.Play(Sfx::BoardFlip);
-        }
+        },
+        "Flip Board"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -166,19 +168,21 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         1,
         [this](Button&) -> void {
             if (!m_EngineThinking && !m_GameOver) pollEngineMove();
-        }
+        },
+        "Play Best Move"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
 
-    // cancel search button
+    // skip search button
     m_Buttons.emplace_back(
         currentXPos, currentYPos,
         buttonSize, buttonSize,
         2,
         [this](Button&) -> void {
             if (m_EngineThinking) m_Board.CancelSearch();
-        }
+        },
+        "Skip Search"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -200,7 +204,8 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 m_EngineThinkTimeMs += 50;
                 m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs));
             }
-        }
+        },
+        "Search Time +"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -222,7 +227,8 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 m_EngineThinkTimeMs = std::max(50, m_EngineThinkTimeMs - 50);
                 m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs));
             }
-        }
+        },
+        "Search Time -"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -237,7 +243,8 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
 
             button.TextureIndex = 7 - m_UseOwnBook;
             m_Popup = Popup("own book: " + std::string(m_UseOwnBook ? "true" : "false"));
-        }
+        },
+        "Own Book"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -257,7 +264,8 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
 
             button.TextureIndex = 9 - m_Ponder;
             m_Popup = Popup("ponder: " + std::string(m_Ponder ? "true" : "false"));
-        }
+        },
+        "Pondering"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -277,37 +285,40 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
 
             button.TextureIndex = 11 - m_Board.GetCatchAll();
             m_Popup = Popup("catch all mode: " + std::string(m_Board.GetCatchAll() ? "true" : "false"));
-        }
+        },
+        "Gotta Catch'em All!"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
 
-    // analysis mode button
+    // inspection mode button
     m_Buttons.emplace_back(
         currentXPos, currentYPos,
         buttonSize, buttonSize,
-        13 - m_AnalysisMode,
+        13 - m_InspectionMode,
         [this](Button& button) -> void {
-            if (!m_EngineThinking && (!m_GameOver || m_AnalysisMode)) {
+            if (!m_EngineThinking && (!m_GameOver || m_InspectionMode)) {
                 joinThreads();
 
-                if (m_AnalysisMode) {
+                if (m_InspectionMode) {
                     const bool oldFlipped = m_Flipped;
 
-                    loadFen(m_AnalysisEntryState);
+                    loadFen(m_InspectionEntryState.Fen);
+                    m_LastMove = m_InspectionEntryState.LastMove;
                     stopPonder();
 
                     m_Flipped = oldFlipped;
                 } else {
-                    m_AnalysisEntryState = m_Board.GetFen(m_SideToMove);
+                    m_InspectionEntryState = GameState(m_Board.GetFen(m_SideToMove), m_LastMove);
                 }
 
-                m_AnalysisMode ^= 1;
-                button.TextureIndex = 13 - m_AnalysisMode;
+                m_InspectionMode ^= 1;
+                button.TextureIndex = 13 - m_InspectionMode;
 
-                m_Popup = Popup("analysis mode: " + std::string(m_AnalysisMode ? "true" : "false"));
+                m_Popup = Popup("inspection mode: " + std::string(m_InspectionMode ? "true" : "false"));
             }
-        }
+        },
+        "Inspection Mode"
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -318,10 +329,11 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         buttonSize, buttonSize,
         3,
         [this](Button&) -> void {
-            m_AnalysisMode = false;
+            m_InspectionMode = false;
             m_PromotionSelectionActive = false;
             loadFen(Chess::DefaultFEN);
-        }
+        },
+        "Reset Board"
     );
 }
 
@@ -382,6 +394,8 @@ bool Application::LoadResources(const std::filesystem::path& root) {
         std::cerr << "Failed to open font" << std::endl;
         return false;
     }
+
+    m_Font.setSmooth(false);
 
     const std::filesystem::path soundPath = root / "Sounds";
 
@@ -495,11 +509,9 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
 
     m_LastMousePosition = position;
 
-    for (Button& button : m_Buttons) {
-        button.Hovered = false;
-    }
-
     const bool hoveringPanel = position.x > m_EvaluationBarWidth + m_SquareSize * Chess::Files;
+
+    Button* nowHovered = nullptr;
 
     if (hoveringPanel) {
         for (Button& button : m_Buttons) {
@@ -507,9 +519,18 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
                 position.x >= button.Position_X && position.x <= (button.Position_X + button.Width) &&
                 position.y >= button.Position_Y && position.y <= (button.Position_Y + button.Height)
             ) {
-                button.Hovered = true;
+                nowHovered = &button;
                 break;
             }
+        }
+    }
+
+    for (Button& button : m_Buttons) {
+        const bool wasHovered = button.Hovered;
+        button.Hovered = (&button == nowHovered);
+
+        if (button.Hovered && !wasHovered) {
+            button.HoverEnterTime = std::chrono::steady_clock::now();
         }
     }
 
@@ -533,7 +554,7 @@ void Application::commitPromotion(Chess::MoveFlag promotionFlag) {
             Chess::HasFlag(m.Flag, promotionFlag)
         ) {
             doMove(m, true);
-            if (!m_GameOver && !m_AnalysisMode) pollEngineMove();
+            if (!m_GameOver && !m_InspectionMode) pollEngineMove();
 
             return;
         }
@@ -614,19 +635,7 @@ void Application::doMove(Chess::Move move, bool animate) {
     ) {
         m_SfxPlayer.Play(Sfx::GameEnd);
 
-        if (m_AnalysisMode) {
-            if (m_Board.FiftyMoveRule()) {
-                m_Popup = Popup("[analysis]: draw (50-move rule)", 5.f);
-            } else if (m_Board.HasInsufficientMaterial()) {
-                m_Popup = Popup("[analysis]: draw (insufficient material)", 5.f);
-            } else if (m_Board.isThreefoldRepetition()) {
-                m_Popup = Popup("[analysis]: draw (threefold repetition)", 5.f);
-            } else if (!m_Board.isUnderCheck(m_SideToMove)) {
-                m_Popup = Popup("[analysis]: stalemate", 5.f);
-            } else {
-                m_Popup = Popup("[analysis]: checkmate", 5.f);
-            }
-        } else {
+        if (!m_InspectionMode) {
             if (m_Board.FiftyMoveRule()) {
                 m_GameOverResult = GameOverResult::DrawFiftyMove;
             } else if (m_Board.HasInsufficientMaterial()) {
@@ -649,9 +658,7 @@ void Application::doMove(Chess::Move move, bool animate) {
     // play sound effects
     if (HasFlag(move.Flag, Chess::MoveFlag::Check)) {
         m_SfxPlayer.Play(Sfx::Check);
-    } else if (
-        isCastle(move.Flag)
-    ) {
+    } else if (isCastle(move.Flag)) {
         m_SfxPlayer.Play(Sfx::SpecialMove);
 
         const bool isKingSide = HasFlag(move.Flag, Chess::MoveFlag::CastleKingSide);
@@ -671,6 +678,18 @@ void Application::doMove(Chess::Move move, bool animate) {
     }
 
     m_LastMove = move;
+
+    if (Chess::HasFlag(move.Flag, Chess::MoveFlag::Capture)) {
+        const auto it = std::find_if(m_PieceAnimations.begin(), m_PieceAnimations.end(),
+            [&move](const PieceMoveAnim& anim) {
+                return anim.Move.TargetSquare == move.TargetSquare;
+            }
+        );
+
+        if (it != m_PieceAnimations.end()) {
+            m_PieceAnimations.erase(it);
+        }
+    }
 
     if (animate) m_PieceAnimations.emplace_back(move);
 
@@ -714,7 +733,7 @@ void Application::dropPiece(int idx, bool animate) {
 
         doMove(*it, animate);
 
-        if (!m_GameOver && !m_AnalysisMode) pollEngineMove();
+        if (!m_GameOver && !m_InspectionMode) pollEngineMove();
     }
 
     m_SelectedPiece = Chess::NullPos;
@@ -724,7 +743,7 @@ void Application::dropPiece(int idx, bool animate) {
 #pragma region Ponder
 
 void Application::startPonder() {
-    if (!m_Ponder || m_GameOver || m_AnalysisMode) return;
+    if (!m_Ponder || m_GameOver || m_InspectionMode) return;
 
     Chess::Board ponderBoard = m_Board;
     Chess::PieceColor ponderSideToMove = m_SideToMove;
@@ -801,8 +820,8 @@ void Application::Update(float deltaTime) {
         m_PanelBrightness, m_HoveringPanel, 20.f * deltaTime
     );
 
-    m_AnalyisModeOverlay_t = Utils::ExponentiallyMoveTo(
-        m_AnalyisModeOverlay_t, m_AnalysisMode, 7.5f * deltaTime
+    m_InspectionModeOverlay_t = Utils::ExponentiallyMoveTo(
+        m_InspectionModeOverlay_t, m_InspectionMode, 7.5f * deltaTime
     );
 
     m_DragTilt = Utils::ExponentiallyMoveTo(
@@ -1154,6 +1173,90 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
             0.4f
         );
     }
+
+    const bool buttonFocused = (
+        button.Hovered &&
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - button.HoverEnterTime
+        ).count() >= 500
+    );
+
+    if (buttonFocused && !button.Note.empty()) {
+        const sf::Vector2u windowSize = target.getSize();
+
+        constexpr float PaddingH = 11.f;
+        constexpr float PaddingV = 8.f;
+        constexpr float Gap = 10.f;
+        constexpr float ArrowHalf = 5.f;
+        constexpr float ArrowDepth = 5.f;
+        constexpr float MaxBubbleW = 130.f;
+
+        const unsigned int charSize = static_cast<unsigned int>(m_SquareSize * 0.175f);
+        const unsigned int fontSize = std::max(11u, std::min(charSize, 14u));
+
+        sf::Text text(m_Font, button.Note, fontSize);
+        text.setStyle(sf::Text::Style::Bold);
+
+        std::string wrappedNote;
+        {
+            std::istringstream words(button.Note);
+            std::string word, line;
+
+            while (words >> word) {
+                std::string test = line.empty() ? word : (line + ' ' + word);
+                sf::Text probe(m_Font, test, fontSize);
+                probe.setStyle(sf::Text::Style::Bold);
+                if (!line.empty() && word.size() > 1 && probe.getLocalBounds().size.x + PaddingH * 2.f > MaxBubbleW) {
+                    wrappedNote += line + '\n';
+                    line = word;
+                } else {
+                    line = test;
+                }
+            }
+
+            wrappedNote += line;
+        }
+
+        text.setString(wrappedNote);
+
+        const sf::FloatRect tb = text.getLocalBounds();
+        const float bubbleW = tb.size.x + PaddingH * 2.f;
+        const float bubbleH = tb.size.y + PaddingV * 2.f;
+
+        const float buttonCY = button.Position_Y + button.Height * 0.5f;
+
+        float bubbleX = button.Position_X - Gap - ArrowDepth - bubbleW;
+        float bubbleY = buttonCY - bubbleH * 0.5f;
+
+        const float margin = 4.f;
+        bubbleY = std::max(margin, std::min(bubbleY, static_cast<float>(windowSize.y) - bubbleH - margin));
+        bubbleX = std::max(margin, bubbleX);
+
+        const float arrowTipY = std::clamp(
+            buttonCY,
+            bubbleY + ArrowHalf + 6.f,
+            bubbleY + bubbleH - ArrowHalf - 6.f
+        );
+
+        RenderRoundedQuad(target, Theme::OverlayPill, sf::Vector2f(bubbleX, bubbleY), sf::Vector2f(bubbleW, bubbleH), 0.18f);
+
+        const float arrowBaseX = bubbleX + bubbleW;
+        const float arrowTipX = arrowBaseX + ArrowDepth;
+
+        const sf::Vertex arrow[] = {
+            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY - ArrowHalf), Theme::OverlayPill),
+            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY + ArrowHalf), Theme::OverlayPill),
+            sf::Vertex(sf::Vector2f(arrowTipX, arrowTipY), Theme::OverlayPill),
+        };
+
+        target.draw(arrow, 3, sf::PrimitiveType::Triangles);
+
+        text.setFillColor(Theme::TextPrimary);
+        text.setOrigin(tb.position);
+        text.setPosition(sf::Vector2f(bubbleX + PaddingH, bubbleY + PaddingV));
+
+        target.draw(text);
+    }
 }
 
 void Application::renderBitboard(sf::RenderTarget& target, uint64_t bitboard, sf::Color color) const {
@@ -1196,12 +1299,9 @@ void Application::renderPopup(sf::RenderTarget& target) const {
     const float slideOffset = (1.f - eased) * 18.f;
     const sf::Vector2f pillPos(targetX, targetY + slideOffset);
 
-    const sf::Color bgColor = Utils::ConvertAlpha(Theme::PopupBackground, eased);
-    const sf::Color textColor = Utils::ConvertAlpha(Theme::PopupText, eased);
+    RenderRoundedQuad(target, Utils::ConvertAlpha(Theme::OverlayPill, eased), pillPos, sf::Vector2f(pillW, pillH), 0.4f);
 
-    RenderRoundedQuad(target, bgColor, pillPos, sf::Vector2f(pillW, pillH), 0.4f);
-
-    text.setFillColor(textColor);
+    text.setFillColor(Utils::ConvertAlpha(Theme::TextPrimary, eased));
     text.setPosition(sf::Vector2f(pillPos.x + paddingH, pillPos.y + paddingV));
 
     target.draw(text);
@@ -1215,9 +1315,7 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
     const float eased = rawP * rawP * (3.f - 2.f * rawP);
 
     // bg overlay
-    const sf::Color bgColor = Utils::ConvertAlpha(Theme::GameOverOverlayBg, eased);
-
-    RenderQuad(target, bgColor,
+    RenderQuad(target, Utils::ConvertAlpha(Theme::SurfaceOverlay, eased),
         sf::Vector2f(m_EvaluationBarWidth, 0.f),
         sf::Vector2f(Chess::Files * m_SquareSize, H)
     );
@@ -1225,7 +1323,7 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
     // particles
     for (const GameOverParticle& p : m_GameOverParticles) {
         const float alpha = std::max(0.f, p.Life);
-        sf::Color col = Theme::GameOverParticle[p.ColorIndex];
+        sf::Color col = Theme::Particle[p.ColorIndex];
         col.a = 255 * alpha * std::min(1.f, eased * 2.f);
 
         if (p.Shape == 2) {
@@ -1282,32 +1380,27 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
 
     const sf::Vector2f cardPos(boardCX - cardW * 0.5f, boardCY - cardH * 0.5f + slideY);
 
-    const sf::Color cardBg = Utils::ConvertAlpha(Theme::GameOverCardBg, eased);
-    RenderRoundedQuad(target, cardBg, cardPos, sf::Vector2f(cardW, cardH), 0.1f);
+    RenderRoundedQuad(target, Utils::ConvertAlpha(Theme::SurfaceRaised, eased), cardPos, sf::Vector2f(cardW, cardH), 0.1f);
 
     // decorative separator line
     const float lineW = cardW * 0.5f;
     const float lineY = cardPos.y + cardPadV + tb.size.y + cardGap * 0.45f;
 
-    const sf::Color lineColor = Utils::ConvertAlpha(Theme::GameOverSubText, eased * 0.45f);
-
-    RenderQuad(target, lineColor,
+    RenderQuad(target, Utils::ConvertAlpha(Theme::TextSecondary, eased * 0.45f),
         sf::Vector2f(boardCX - lineW * 0.5f, lineY),
         sf::Vector2f(lineW, 1.5f)
     );
 
     // title text - horizontally centred
-    const sf::Color titleCol = Utils::ConvertAlpha(Theme::GameOverTitleText, eased);
     titleText.setOrigin(sf::Vector2f(tb.position.x + tb.size.x * 0.5f, tb.position.y));
     titleText.setPosition(sf::Vector2f(boardCX, cardPos.y + cardPadV));
-    titleText.setFillColor(titleCol);
+    titleText.setFillColor(Utils::ConvertAlpha(Theme::TextPrimary, eased));
     target.draw(titleText);
 
     // subtitle text
-    const sf::Color subCol = Utils::ConvertAlpha(Theme::GameOverSubText, eased);
     subText.setOrigin(sf::Vector2f(sb.position.x + sb.size.x * 0.5f, sb.position.y));
     subText.setPosition(sf::Vector2f(boardCX, cardPos.y + cardPadV + tb.size.y + cardGap));
-    subText.setFillColor(subCol);
+    subText.setFillColor(Utils::ConvertAlpha(Theme::TextSecondary, eased));
     target.draw(subText);
 }
 
@@ -1329,29 +1422,25 @@ void Application::renderPromotionMenu(sf::RenderTarget& target, sf::Vector2i mou
     const sf::Color dim(0, 0, 0, 130);
 
     if (menuX > boardLeft) {
-        RenderQuad(
-            target, dim,
+        RenderQuad(target, dim,
             sf::Vector2f(boardLeft, 0.f), sf::Vector2f(menuX - boardLeft, boardHeight)
         );
     }
 
     if (menuX + m_SquareSize < boardRight) {
-        RenderQuad(
-            target, dim,
+        RenderQuad(target, dim,
             sf::Vector2f(menuX + m_SquareSize, 0.f), sf::Vector2f(boardRight - menuX - m_SquareSize, boardHeight)
         );
     }
 
     if (cardTop > 0.f) {
-        RenderQuad(
-            target, dim,
+        RenderQuad(target, dim,
             sf::Vector2f(menuX, 0.f), sf::Vector2f(m_SquareSize, cardTop)
         );
     }
 
     if (cardBottom < boardHeight) {
-        RenderQuad(
-            target, dim,
+        RenderQuad(target, dim,
             sf::Vector2f(menuX, cardBottom), sf::Vector2f(m_SquareSize, boardHeight - cardBottom)
         );
     }
@@ -1384,9 +1473,9 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
 
         renderEvaluationBar(target);
 
-        if (m_AnalysisMode) {
+        if (m_InspectionMode) {
             RenderQuad(
-                target, sf::Color(120, 120, 120, 90 * m_AnalyisModeOverlay_t),
+                target, sf::Color(120, 120, 120, 90 * m_InspectionModeOverlay_t),
                 sf::Vector2f(m_EvaluationBarWidth, 0.f), sf::Vector2f(Chess::Files, Chess::Ranks) * m_SquareSize
             );
         }
@@ -1477,10 +1566,8 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
         }
 
         // panel mask (for fade effect)
-        const sf::Color maskColor = Utils::ConvertAlpha(Theme::Background, 1.f - m_PanelBrightness);
-
         RenderQuad(
-            target, maskColor,
+            target, Utils::ConvertAlpha(Theme::Background, 1.f - m_PanelBrightness),
             sf::Vector2f(target.getSize().x - m_PanelWidth, 0.f),
             sf::Vector2f(m_PanelWidth, target.getSize().y)
         );

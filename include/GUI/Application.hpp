@@ -3,6 +3,7 @@
 #include <vector>
 #include <filesystem>
 #include <thread>
+#include <chrono>
 
 #include "SFML/Graphics.hpp"
 
@@ -10,20 +11,23 @@
 
 #include "GUI/SoundSystem.hpp"
 
-struct Button {
-    float Position_X;
-    float Position_Y;
-    float Width;
-    float Height;
-
-    uint8_t TextureIndex{0};
-
-    std::function<void(Button&)> Callback;
-    bool Hovered{false};
-};
-
 class Application final {
 private:
+    struct Button {
+        float Position_X{0.f};
+        float Position_Y{0.f};
+        float Width{0.f};
+        float Height{0.f};
+
+        uint8_t TextureIndex{0};
+
+        std::function<void(Button&)> Callback{nullptr};
+        std::string Note;
+
+        std::chrono::steady_clock::time_point HoverEnterTime;
+        bool Hovered{false};
+    };
+
     struct PieceMoveAnim {
         float Timer{0.f};
         Chess::Move Move;
@@ -68,6 +72,11 @@ private:
         float Life{1.f};
         uint8_t ColorIndex{0};
         uint8_t Shape{0}; // 0=square  1=diamond  2=circle
+    };
+
+    struct GameState {
+        std::string Fen{Chess::DefaultFEN};
+        Chess::Move LastMove;
     };
 
     [[nodiscard]]
@@ -145,7 +154,7 @@ private:
     float m_SquareSize;
     float m_PanelWidth;
     float m_PanelBrightness{0.f};
-    float m_AnalyisModeOverlay_t{0.f};
+    float m_InspectionModeOverlay_t{0.f};
     float m_DragTilt{0.f};
 
     float m_CurrentEvaluation{0.5f};
@@ -155,7 +164,7 @@ private:
     GameOverResult m_GameOverResult{GameOverResult::None};
     std::vector<GameOverParticle> m_GameOverParticles;
 
-    std::string m_AnalysisEntryState{Chess::DefaultFEN};
+    GameState m_InspectionEntryState;
 
     sf::VertexArray m_CheckerboardMesh;
 
@@ -172,7 +181,7 @@ private:
     bool m_PromotionSelectionActive{false};
     bool m_EngineThinking{false};
     bool m_HoveringPanel{false};
-    bool m_AnalysisMode{false};
+    bool m_InspectionMode{false};
 
     // UI / UX
     std::vector<PieceMoveAnim> m_PieceAnimations;
