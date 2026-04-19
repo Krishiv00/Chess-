@@ -28,6 +28,7 @@ namespace LichessTheme {
 
     constexpr sf::Color LastMoveHighlight = sf::Color(155, 200, 0, 105);
     constexpr sf::Color LegalMoveHighlight = sf::Color(20, 85, 29, 128);
+    constexpr sf::Color MarkerHighlight = sf::Color(19, 119, 24, 151);
 
     constexpr sf::Color EvaluationBar[] = {
         sf::Color(255, 255, 255), sf::Color(64, 61, 57)
@@ -41,6 +42,7 @@ namespace LichessTheme {
     constexpr sf::Color TextSecondary = sf::Color(180, 160, 130, 255);
 
     constexpr sf::Color OverlayPill = sf::Color(28, 27, 25, 230);
+    constexpr sf::Color Arrow = sf::Color(19, 119, 24, 151);
 
     constexpr sf::Color Particle[] = {
         sf::Color(240, 217, 181), sf::Color(181, 136, 99),
@@ -56,6 +58,7 @@ namespace ChesscomTheme {
 
     constexpr sf::Color LastMoveHighlight = sf::Color(255, 255, 52, 128);
     constexpr sf::Color LegalMoveHighlight = sf::Color(2, 1, 0, 36);
+    constexpr sf::Color MarkerHighlight = sf::Color(235, 97, 81, 204);
 
     constexpr sf::Color EvaluationBar[] = {
         sf::Color(255, 255, 255), sf::Color(64, 61, 57)
@@ -69,6 +72,7 @@ namespace ChesscomTheme {
     constexpr sf::Color TextSecondary = sf::Color(160, 185, 130, 255);
 
     constexpr sf::Color OverlayPill = sf::Color(32, 38, 28, 230);
+    constexpr sf::Color Arrow = sf::Color(255, 170, 0, 163);
 
     constexpr sf::Color Particle[] = {
         sf::Color(235, 236, 208), sf::Color(115, 149, 82),
@@ -458,34 +462,56 @@ void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
     }
 }
 
-void Application::HandleMouseButtonPressed(sf::Vector2i position) {
-    if (m_PromotionSelectionActive) {
-        if (const int hit = hitTestPromotionMenu(position)) {
-            commitPromotion(Chess::PromotionFlags[hit - 1]);
+void Application::HandleMouseButtonPressed(sf::Mouse::Button button, sf::Vector2i position) {
+    if (button == sf::Mouse::Button::Left) {
+        m_Markers = 0ull;
+        m_Arrows.clear();
+
+        if (m_PromotionSelectionActive) {
+            if (const int hit = hitTestPromotionMenu(position)) {
+                commitPromotion(Chess::PromotionFlags[hit - 1]);
+            }
+
+            m_PromotionSelectionActive = false;
+            m_SelectedPiece = Chess::NullPos;
+            m_LegalMovesForSelectedPiece.clear();
+        } else {
+            for (Button& button : m_Buttons) {
+                if (button.Hovered) {
+                    if (button.Callback) button.Callback(button);
+                    return;
+                }
+            }
+
+            onMouseButtonSignal(position, false);
+
+            if (m_GameOver && m_GameOverParticles.empty()) m_GameOverResult = GameOverResult::None;
         }
-
-        m_PromotionSelectionActive = false;
-        m_SelectedPiece = Chess::NullPos;
-        m_LegalMovesForSelectedPiece.clear();
-
-        return;
     }
 
-    for (Button& button : m_Buttons) {
-        if (button.Hovered) {
-            if (button.Callback) button.Callback(button);
-            return;
-        }
+    else if (button == sf::Mouse::Button::Right) {
+        const auto [rank, file] = mapMousePosToCoordinates(position);
+        const int idx = Chess::To2DIndex(rank, file);
+
+        m_Markers ^= Chess::IndexToMask(idx); // toggle
+        m_CurrentlyDrawingArrow.Start = idx;
     }
-
-    onMouseButtonSignal(position, false);
-
-    if (m_GameOver && m_GameOverParticles.empty()) m_GameOverResult = GameOverResult::None;
 }
 
-void Application::HandleMouseButtonReleased(sf::Vector2i position) {
-    if (m_PromotionSelectionActive) return;
-    onMouseButtonSignal(position, true);
+void Application::HandleMouseButtonReleased(sf::Mouse::Button button, sf::Vector2i position) {
+    if (button == sf::Mouse::Button::Left) {
+        if (!m_PromotionSelectionActive) onMouseButtonSignal(position, true);
+    }
+
+    else if (button == sf::Mouse::Button::Right) {
+        const auto [rank, file] = mapMousePosToCoordinates(position);
+        const int idx = Chess::To2DIndex(rank, file);
+
+        m_Markers |= Chess::IndexToMask(idx); // turn on
+        if (m_CurrentlyDrawingArrow) m_Arrows.push_back(m_CurrentlyDrawingArrow);
+
+        m_CurrentlyDrawingArrow = Arrow();
+    }
 }
 
 void Application::HandleMouseMoved(sf::Vector2i position) {
@@ -497,10 +523,10 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
             static_cast<float>(position.y - m_LastMousePosition.y)
         );
 
-        const float speed = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+        const float speed = std::sqrtf(delta.x * delta.x + delta.y * delta.y);
 
         if (speed > 0.5f) {
-            constexpr float MaxTilt = 0.45f; // (~26 degrees)
+            constexpr float MaxTilt = 0.45f; // ~26 degrees
             const float targetTilt = (delta.x / speed) * std::min(speed / 18.f, 1.f) * MaxTilt;
             m_DragTilt = targetTilt;
         }
@@ -526,7 +552,7 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
 
     for (Button& button : m_Buttons) {
         const bool wasHovered = button.Hovered;
-        button.Hovered = (&button == nowHovered);
+        button.Hovered = &button == nowHovered;
 
         if (button.Hovered && !wasHovered) {
             button.HoverEnterTime = std::chrono::steady_clock::now();
@@ -534,6 +560,11 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
     }
 
     m_HoveringPanel = hoveringPanel;
+
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
+        const auto [rank, file] = mapMousePosToCoordinates(position);
+        m_CurrentlyDrawingArrow.End = Chess::To2DIndex(rank, file);
+    }
 }
 
 void Application::HandleMouseLeftWindow() {
@@ -1461,6 +1492,118 @@ void Application::renderPromotionMenu(sf::RenderTarget& target, sf::Vector2i mou
     }
 }
 
+void Application::renderArrow(sf::RenderTarget& target, Arrow arrow) const {
+    const float arrowWidth = m_SquareSize * 0.185f;
+    const float headLength = m_SquareSize * 0.40f;
+    const float headWidth = m_SquareSize * 0.45f;
+
+    const sf::Vector2f startPos(
+        mapFile(Chess::ToFile(arrow.Start)) * m_SquareSize + m_EvaluationBarWidth + m_SquareSize * 0.5f,
+        mapRank(Chess::ToRank(arrow.Start)) * m_SquareSize + m_SquareSize * 0.5f
+    );
+
+    const sf::Vector2f endPos(
+        mapFile(Chess::ToFile(arrow.End)) * m_SquareSize + m_EvaluationBarWidth + m_SquareSize * 0.5f,
+        mapRank(Chess::ToRank(arrow.End)) * m_SquareSize + m_SquareSize * 0.5f
+    );
+
+    const int rankDiff = std::abs(
+        Chess::ToRank(arrow.End) - Chess::ToRank(arrow.Start)
+    );
+
+    const int fileDiff = std::abs(
+        Chess::ToFile(arrow.End) - Chess::ToFile(arrow.Start)
+    );
+
+    // knight move
+    if ((rankDiff == 2 && fileDiff == 1) || (rankDiff == 1 && fileDiff == 2)) {
+        const sf::Vector2f midPos = (rankDiff == 2 && fileDiff == 1)
+            ? sf::Vector2f(startPos.x, endPos.y) : sf::Vector2f(endPos.x, startPos.y);
+
+        const sf::Vector2f dir1 = midPos - startPos;
+        const float len1 = std::sqrtf(dir1.x * dir1.x + dir1.y * dir1.y);
+
+        const sf::Vector2f dir2 = endPos - midPos;
+        const float len2 = std::sqrtf(dir2.x * dir2.x + dir2.y * dir2.y);
+
+        if (len1 > 0.f && len2 > 0.f) {
+            const sf::Vector2f norm1 = sf::Vector2f(dir1.x / len1, dir1.y / len1);
+            const sf::Vector2f perp1 = sf::Vector2f(-norm1.y, norm1.x);
+
+            const sf::Vector2f norm2 = sf::Vector2f(dir2.x / len2, dir2.y / len2);
+            const sf::Vector2f perp2 = sf::Vector2f(-norm2.y, norm2.x);
+
+            const sf::Vector2f seg1End = midPos + norm1 * (arrowWidth * 0.5f);
+
+            const sf::Vector2f seg2Start = midPos + norm2 * (arrowWidth * 0.5f);
+            const sf::Vector2f shaftEnd = endPos - norm2 * headLength;
+
+            // first segment
+            const sf::Vertex shaft1[] = {
+                sf::Vertex(startPos + perp1 * (arrowWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(startPos - perp1 * (arrowWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(seg1End + perp1 * (arrowWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(seg1End - perp1 * (arrowWidth * 0.5f), Theme::Arrow)
+            };
+
+            target.draw(shaft1, 4, sf::PrimitiveType::TriangleStrip);
+
+            // second segment
+            const sf::Vertex shaft2[] = {
+                sf::Vertex(seg2Start + perp2 * (arrowWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(seg2Start - perp2 * (arrowWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(shaftEnd + perp2 * (arrowWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(shaftEnd - perp2 * (arrowWidth * 0.5f), Theme::Arrow)
+            };
+
+            target.draw(shaft2, 4, sf::PrimitiveType::TriangleStrip);
+
+            // head
+            const sf::Vertex head[] = {
+                sf::Vertex(shaftEnd + perp2 * (headWidth * 0.5f), Theme::Arrow),
+                sf::Vertex(endPos, Theme::Arrow),
+                sf::Vertex(shaftEnd - perp2 * (headWidth * 0.5f), Theme::Arrow)
+            };
+
+            target.draw(head, 3, sf::PrimitiveType::Triangles);
+        }
+    } else {
+        const sf::Vector2f dir = endPos - startPos;
+        const float len = std::sqrtf(dir.x * dir.x + dir.y * dir.y);
+
+        if (len == 0.f) return;
+
+        const sf::Vector2f norm = sf::Vector2f(dir.x / len, dir.y / len);
+        const sf::Vector2f perp = sf::Vector2f(-norm.y, norm.x);
+
+        const float shortenStart = m_SquareSize * 0.15f;
+        const float shortenEnd = m_SquareSize * 0.15f;
+
+        const sf::Vector2f adjustedStart = startPos + norm * shortenStart;
+        const sf::Vector2f adjustedEnd = endPos - norm * shortenEnd;
+        const sf::Vector2f shaftEnd = adjustedEnd - norm * headLength;
+
+        // shaft
+        const sf::Vertex shaft[] = {
+            sf::Vertex(adjustedStart + perp * (arrowWidth * 0.5f), Theme::Arrow),
+            sf::Vertex(adjustedStart - perp * (arrowWidth * 0.5f), Theme::Arrow),
+            sf::Vertex(shaftEnd + perp * (arrowWidth * 0.5f), Theme::Arrow),
+            sf::Vertex(shaftEnd - perp * (arrowWidth * 0.5f), Theme::Arrow)
+        };
+
+        target.draw(shaft, 4, sf::PrimitiveType::TriangleStrip);
+
+        // head
+        const sf::Vertex head[] = {
+            sf::Vertex(shaftEnd + perp * (headWidth * 0.5f), Theme::Arrow),
+            sf::Vertex(adjustedEnd, Theme::Arrow),
+            sf::Vertex(shaftEnd - perp * (headWidth * 0.5f), Theme::Arrow)
+        };
+
+        target.draw(head, 3, sf::PrimitiveType::Triangles);
+    }
+}
+
 void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) const {
     const float halfSquareSize = m_SquareSize * 0.5f;
     const bool mouseHeld = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
@@ -1483,25 +1626,43 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
     }
 
     /* Highlights */ {
-        // move history
-        if (m_LastMove) {
-            RenderQuad(
-                target, Theme::LastMoveHighlight,
-                sf::Vector2f(
-                    mapFile(Chess::ToFile(m_LastMove.StartingSquare)) * m_SquareSize + m_EvaluationBarWidth,
-                    mapRank(Chess::ToRank(m_LastMove.StartingSquare)) * m_SquareSize
-                ),
-                sf::Vector2f(m_SquareSize, m_SquareSize)
-            );
+        // markers
+        for (uint64_t tmp = m_Markers; tmp; tmp &= tmp - 1) {
+            const int idx = Chess::MaskToIndex(tmp);
 
             RenderQuad(
-                target, Theme::LastMoveHighlight,
+                target, Theme::MarkerHighlight,
                 sf::Vector2f(
-                    mapFile(Chess::ToFile(m_LastMove.TargetSquare)) * m_SquareSize + m_EvaluationBarWidth,
-                    mapRank(Chess::ToRank(m_LastMove.TargetSquare)) * m_SquareSize
+                    mapFile(Chess::ToFile(idx)) * m_SquareSize + m_EvaluationBarWidth,
+                    mapRank(Chess::ToRank(idx)) * m_SquareSize
                 ),
                 sf::Vector2f(m_SquareSize, m_SquareSize)
             );
+        }
+
+        // move history
+        if (m_LastMove) {
+            if ((m_Markers & Chess::IndexToMask(m_LastMove.StartingSquare)) == 0ull) {
+                RenderQuad(
+                    target, Theme::LastMoveHighlight,
+                    sf::Vector2f(
+                        mapFile(Chess::ToFile(m_LastMove.StartingSquare)) * m_SquareSize + m_EvaluationBarWidth,
+                        mapRank(Chess::ToRank(m_LastMove.StartingSquare)) * m_SquareSize
+                    ),
+                    sf::Vector2f(m_SquareSize, m_SquareSize)
+                );
+            }
+
+            if ((m_Markers & Chess::IndexToMask(m_LastMove.TargetSquare)) == 0ull) {
+                RenderQuad(
+                    target, Theme::LastMoveHighlight,
+                    sf::Vector2f(
+                        mapFile(Chess::ToFile(m_LastMove.TargetSquare)) * m_SquareSize + m_EvaluationBarWidth,
+                        mapRank(Chess::ToRank(m_LastMove.TargetSquare)) * m_SquareSize
+                    ),
+                    sf::Vector2f(m_SquareSize, m_SquareSize)
+                );
+            }
         }
 
         // selected piece
@@ -1539,7 +1700,7 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             const sf::Vector2f dir = end - start;
             const sf::Vector2f position = (start + dir * anim.Timer) * m_SquareSize;
 
-            const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+            const float len = std::sqrtf(dir.x * dir.x + dir.y * dir.y);
             const float animTilt = len ? -dir.x / len * 1.2f * anim.Timer * (1.f - anim.Timer) : 0.f;
 
             renderPiece(
@@ -1561,6 +1722,13 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
     }
 
     /* UI */ {
+        // arrows
+        if (m_CurrentlyDrawingArrow) renderArrow(target, m_CurrentlyDrawingArrow);
+
+        for (Arrow arrow : m_Arrows) {
+            renderArrow(target, arrow);
+        }
+
         // buttons
         for (const Button& button : m_Buttons) {
             renderButton(target, button);

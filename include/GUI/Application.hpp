@@ -79,6 +79,16 @@ private:
         Chess::Move LastMove;
     };
 
+    struct Arrow {
+        uint8_t Start{Chess::NullPos};
+        uint8_t End{Chess::NullPos};
+
+        [[nodiscard]]
+        inline operator bool() const noexcept {
+            return Start != Chess::NullPos && End != Chess::NullPos && Start != End;
+        }
+    };
+
     [[nodiscard]]
     inline bool hasSelectedPiece() const noexcept {
         return m_SelectedPiece != Chess::NullPos;
@@ -135,6 +145,7 @@ private:
     void renderPopup(sf::RenderTarget& target) const;
     void renderCheckmateOverlay(sf::RenderTarget& target) const;
     void renderPromotionMenu(sf::RenderTarget& target, sf::Vector2i mousePos) const;
+    void renderArrow(sf::RenderTarget& target, Arrow arrow) const;
 
     Chess::Board m_Board;
     Chess::Move m_LastMove;
@@ -186,7 +197,10 @@ private:
     // UI / UX
     std::vector<PieceMoveAnim> m_PieceAnimations;
     std::vector<Button> m_Buttons;
+    std::vector<Arrow> m_Arrows;
     Popup m_Popup;
+    uint64_t m_Markers{0ull};
+    Arrow m_CurrentlyDrawingArrow;
 
     // Resources
     sf::Texture m_PieceTexture;
@@ -208,8 +222,8 @@ public:
     void Render(sf::RenderTarget& target, sf::Vector2i mousePosition) const;
 
     void HandleKeyPressed(sf::Keyboard::Scancode key);
-    void HandleMouseButtonPressed(sf::Vector2i position);
-    void HandleMouseButtonReleased(sf::Vector2i position);
+    void HandleMouseButtonPressed(sf::Mouse::Button button, sf::Vector2i position);
+    void HandleMouseButtonReleased(sf::Mouse::Button button, sf::Vector2i position);
     void HandleMouseMoved(sf::Vector2i position);
     void HandleMouseLeftWindow();
 };

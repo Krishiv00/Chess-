@@ -122,15 +122,11 @@ void Launcher::onEvent(const sf::Event& event) {
     }
 
     else if (const auto* button = event.getIf<sf::Event::MouseButtonPressed>()) {
-        if (button->button == sf::Mouse::Button::Left) {
-            m_Application.HandleMouseButtonPressed(button->position);
-        }
+        m_Application.HandleMouseButtonPressed(button->button, button->position);
     }
 
     else if (const auto* button = event.getIf<sf::Event::MouseButtonReleased>()) {
-        if (button->button == sf::Mouse::Button::Left) {
-            m_Application.HandleMouseButtonReleased(button->position);
-        }
+        m_Application.HandleMouseButtonReleased(button->button, button->position);
     }
 
     else if (const auto* move = event.getIf<sf::Event::MouseMoved>()) {
