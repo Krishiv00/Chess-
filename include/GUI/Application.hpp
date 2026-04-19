@@ -14,7 +14,7 @@
 class Application final {
 private:
     struct Button {
-        static constexpr inline const unsigned int TooltipThreshold = 500; // ms
+        static constexpr inline const unsigned int TooltipThreshold = 350; // ms
         
         float Position_X{0.f};
         float Position_Y{0.f};
@@ -155,7 +155,7 @@ private:
     Chess::PieceColor m_SideToMove;
     Chess::PieceColor m_LastEngineColor;
 
-    uint16_t m_EngineThinkTimeMs{750};
+    uint16_t m_EngineThinkTimeMs{250};
     uint8_t m_EvaluationDepth{12};
     bool m_UseOwnBook{true};
     bool m_Ponder{true};
