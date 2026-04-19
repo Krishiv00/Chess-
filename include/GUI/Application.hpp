@@ -14,6 +14,8 @@
 class Application final {
 private:
     struct Button {
+        static constexpr inline const unsigned int TooltipThreshold = 500; // ms
+        
         float Position_X{0.f};
         float Position_Y{0.f};
         float Width{0.f};
@@ -136,6 +138,7 @@ private:
     sf::VertexArray generateCheckerboardMesh(float squareSize, float offset_x, const sf::Color* colors);
 
     void renderRanksAndFiles(sf::RenderTarget& target) const;
+    void renderSquareHighlight(sf::RenderTarget& target, uint8_t square, sf::Color color) const;
     void renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y, float angle = 0.f) const;
     void renderPieces(sf::RenderTarget& target, bool mouseHeld) const;
     void renderEvaluationBar(sf::RenderTarget& target) const;

@@ -1050,6 +1050,19 @@ void Application::renderRanksAndFiles(sf::RenderTarget& target) const {
     }
 }
 
+void Application::renderSquareHighlight(sf::RenderTarget& target, uint8_t square, sf::Color color) const {
+    if ((m_Markers & Chess::IndexToMask(square)) == 0ull) {
+        RenderQuad(
+            target, color,
+            sf::Vector2f(
+                mapFile(Chess::ToFile(square)) * m_SquareSize + m_EvaluationBarWidth,
+                mapRank(Chess::ToRank(square)) * m_SquareSize
+            ),
+            sf::Vector2f(m_SquareSize, m_SquareSize)
+        );
+    }
+}
+
 void Application::renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y, float angle) const {
     const float PieceTextureWidth = static_cast<float>(m_PieceTexture.getSize().x) / 6.f;
     const float PieceTextureHeight = static_cast<float>(m_PieceTexture.getSize().y) / 2.f;
@@ -1210,7 +1223,7 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
         button.Hovered &&
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - button.HoverEnterTime
-        ).count() >= 500
+        ).count() >= Button::TooltipThreshold
     );
 
     if (buttonFocused && !button.Note.empty()) {
@@ -1642,39 +1655,13 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
 
         // move history
         if (m_LastMove) {
-            if ((m_Markers & Chess::IndexToMask(m_LastMove.StartingSquare)) == 0ull) {
-                RenderQuad(
-                    target, Theme::LastMoveHighlight,
-                    sf::Vector2f(
-                        mapFile(Chess::ToFile(m_LastMove.StartingSquare)) * m_SquareSize + m_EvaluationBarWidth,
-                        mapRank(Chess::ToRank(m_LastMove.StartingSquare)) * m_SquareSize
-                    ),
-                    sf::Vector2f(m_SquareSize, m_SquareSize)
-                );
-            }
-
-            if ((m_Markers & Chess::IndexToMask(m_LastMove.TargetSquare)) == 0ull) {
-                RenderQuad(
-                    target, Theme::LastMoveHighlight,
-                    sf::Vector2f(
-                        mapFile(Chess::ToFile(m_LastMove.TargetSquare)) * m_SquareSize + m_EvaluationBarWidth,
-                        mapRank(Chess::ToRank(m_LastMove.TargetSquare)) * m_SquareSize
-                    ),
-                    sf::Vector2f(m_SquareSize, m_SquareSize)
-                );
-            }
+            renderSquareHighlight(target, m_LastMove.StartingSquare, Theme::LastMoveHighlight);
+            renderSquareHighlight(target, m_LastMove.TargetSquare, Theme::LastMoveHighlight);
         }
 
         // selected piece
         if (hasSelectedPiece()) {
-            RenderQuad(
-                target, Theme::LastMoveHighlight,
-                sf::Vector2f(
-                    mapFile(Chess::ToFile(m_SelectedPiece)) * m_SquareSize + m_EvaluationBarWidth,
-                    mapRank(Chess::ToRank(m_SelectedPiece)) * m_SquareSize
-                ),
-                sf::Vector2f(m_SquareSize, m_SquareSize)
-            );
+            renderSquareHighlight(target, m_SelectedPiece, Theme::LastMoveHighlight);
         }
 
         // legal move
