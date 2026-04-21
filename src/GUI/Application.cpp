@@ -1666,10 +1666,7 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             }
 
             renderSquareHighlight(target, m_SelectedPiece, m_Theme->GetSelectedPiece());
-        }
-
-        // legal move
-        if (!m_LegalMovesForSelectedPiece.empty()) {
+            
             renderLegalMoves(target, mousePosition);
         }
     }
