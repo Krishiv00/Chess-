@@ -1156,9 +1156,11 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
     }
 
     if (
+        hasSelectedPiece() &&
         m_Theme->DrawHoveredSqOutline() &&
         mousePosition.x > m_EvaluationBarWidth &&
-        mousePosition.x < (Chess::Files * m_SquareSize + m_EvaluationBarWidth)
+        mousePosition.x < (Chess::Files * m_SquareSize + m_EvaluationBarWidth) &&
+        sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)
     ) {
         const int file = mapFile(Chess::ToFile(hoveredIdx));
         const int rank = mapRank(Chess::ToRank(hoveredIdx));
@@ -1666,9 +1668,9 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             }
 
             renderSquareHighlight(target, m_SelectedPiece, m_Theme->GetSelectedPiece());
-            
-            renderLegalMoves(target, mousePosition);
         }
+
+        renderLegalMoves(target, mousePosition);
     }
 
     /* Pieces */ {
