@@ -19,70 +19,6 @@ namespace Utils {
     }
 }
 
-#pragma region Themes
-
-namespace LichessTheme {
-    constexpr sf::Color Checkerboard[] = {
-        sf::Color(240, 217, 181), sf::Color(181, 136, 99)
-    };
-
-    constexpr sf::Color LastMoveHighlight = sf::Color(155, 200, 0, 105);
-    constexpr sf::Color LegalMoveHighlight = sf::Color(20, 85, 29, 128);
-    constexpr sf::Color MarkerHighlight = sf::Color(19, 119, 24, 151);
-
-    constexpr sf::Color EvaluationBar[] = {
-        sf::Color(255, 255, 255), sf::Color(64, 61, 57)
-    };
-
-    constexpr sf::Color Background = sf::Color(48, 46, 43, 255);
-    constexpr sf::Color SurfaceRaised = sf::Color(42, 40, 37, 248);
-    constexpr sf::Color SurfaceOverlay = sf::Color(18, 17, 15, 195);
-
-    constexpr sf::Color TextPrimary = sf::Color(240, 217, 181, 255);
-    constexpr sf::Color TextSecondary = sf::Color(180, 160, 130, 255);
-
-    constexpr sf::Color OverlayPill = sf::Color(28, 27, 25, 230);
-    constexpr sf::Color Arrow = sf::Color(19, 119, 24, 151);
-
-    constexpr sf::Color Particle[] = {
-        sf::Color(240, 217, 181), sf::Color(181, 136, 99),
-        sf::Color(200, 185, 150), sf::Color(255, 230, 180),
-        sf::Color(120, 100, 75),
-    };
-}
-
-namespace ChesscomTheme {
-    constexpr sf::Color Checkerboard[] = {
-        sf::Color(235, 236, 208), sf::Color(115, 149, 82)
-    };
-
-    constexpr sf::Color LastMoveHighlight = sf::Color(255, 255, 52, 128);
-    constexpr sf::Color LegalMoveHighlight = sf::Color(2, 1, 0, 36);
-    constexpr sf::Color MarkerHighlight = sf::Color(235, 97, 81, 204);
-
-    constexpr sf::Color EvaluationBar[] = {
-        sf::Color(255, 255, 255), sf::Color(64, 61, 57)
-    };
-
-    constexpr sf::Color Background = sf::Color(48, 46, 43, 255);
-    constexpr sf::Color SurfaceRaised = sf::Color(40, 46, 36, 248);
-    constexpr sf::Color SurfaceOverlay = sf::Color(18, 17, 15, 195);
-
-    constexpr sf::Color TextPrimary = sf::Color(235, 236, 208, 255);
-    constexpr sf::Color TextSecondary = sf::Color(160, 185, 130, 255);
-
-    constexpr sf::Color OverlayPill = sf::Color(32, 38, 28, 230);
-    constexpr sf::Color Arrow = sf::Color(255, 170, 0, 163);
-
-    constexpr sf::Color Particle[] = {
-        sf::Color(235, 236, 208), sf::Color(115, 149, 82),
-        sf::Color(180, 200, 140), sf::Color(255, 240, 180),
-        sf::Color(80, 110, 55),
-    };
-}
-
-namespace Theme = ChesscomTheme;
-
 #pragma region Setup
 
 Application::Application() {
@@ -92,6 +28,8 @@ Application::Application() {
     m_Board.SetCatchAll(false);
 
     loadFen(Chess::DefaultFEN);
+
+    m_Theme = std::make_unique<ChesscomTheme>();
 }
 
 void Application::loadFen(const std::string& fen) {
@@ -125,8 +63,6 @@ void Application::SetTargetSize(sf::Vector2u size) {
     m_SquareSize = static_cast<float>(size.y) / static_cast<float>(Chess::Ranks);
 
     initUserInterface(size);
-
-    m_CheckerboardMesh = generateCheckerboardMesh(m_SquareSize, m_EvaluationBarWidth, Theme::Checkerboard);
 }
 
 void Application::initUserInterface(sf::Vector2u windowSize) {
@@ -160,7 +96,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
             m_Flipped ^= true;
             m_SfxPlayer.Play(Sfx::BoardFlip);
         },
-        "Flip Board"
+        std::array<std::string, 2>{"Flip Board", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -173,7 +109,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         [this](Button&) -> void {
             if (!m_EngineThinking && !m_GameOver) pollEngineMove();
         },
-        "Play Best Move"
+        std::array<std::string, 2>{"Play Best Move", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -186,7 +122,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         [this](Button&) -> void {
             if (m_EngineThinking) m_Board.CancelSearch();
         },
-        "Skip Search"
+        std::array<std::string, 2>{"Skip Search", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -209,7 +145,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs));
             }
         },
-        "Search Time +"
+        std::array<std::string, 2>{"Search Time +", "Eval Depth +"}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -232,7 +168,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 m_Popup = Popup("think time: " + std::to_string(m_EngineThinkTimeMs));
             }
         },
-        "Search Time -"
+        std::array<std::string, 2>{"Search Time -", "Eval Depth -"}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -248,7 +184,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
             button.TextureIndex = 7 - m_UseOwnBook;
             m_Popup = Popup("own book: " + std::string(m_UseOwnBook ? "true" : "false"));
         },
-        "Own Book"
+        std::array<std::string, 2>{"Own Book", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -269,7 +205,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
             button.TextureIndex = 9 - m_Ponder;
             m_Popup = Popup("ponder: " + std::string(m_Ponder ? "true" : "false"));
         },
-        "Pondering"
+        std::array<std::string, 2>{"Ponder", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -290,7 +226,7 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
             button.TextureIndex = 11 - m_Board.GetCatchAll();
             m_Popup = Popup("catch all mode: " + std::string(m_Board.GetCatchAll() ? "true" : "false"));
         },
-        "Gotta Catch'em All!"
+        std::array<std::string, 2>{"Gotta Catch'em All!", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -322,54 +258,30 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
                 m_Popup = Popup("inspection mode: " + std::string(m_InspectionMode ? "true" : "false"));
             }
         },
-        "Inspection Mode"
+        std::array<std::string, 2>{"Inspection Mode", ""}
     );
 
     currentYPos += buttonSize + padding_y * 2.f;
 
-    // board reset button
+    // board reset / theme cycle button
     m_Buttons.emplace_back(
         currentXPos, static_cast<float>(windowSize.y) - buttonSize - padding_y,
         buttonSize, buttonSize,
         3,
         [this](Button&) -> void {
-            m_PromotionSelectionActive = false;
-            loadFen(Chess::DefaultFEN);
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
+                if (dynamic_cast<ChesscomTheme*>(m_Theme.get())) {
+                    m_Theme = std::make_unique<LichessTheme>();
+                } else {
+                    m_Theme = std::make_unique<ChesscomTheme>();
+                }
+            } else {
+                m_PromotionSelectionActive = false;
+                loadFen(Chess::DefaultFEN);
+            }
         },
-        "Reset Board"
+        std::array<std::string, 2>{"Reset Board", "Cycle Themes"}
     );
-}
-
-sf::VertexArray Application::generateCheckerboardMesh(float squareSize, float offset_x, const sf::Color* colors) {
-    constexpr std::size_t VertexCount = Chess::Files * Chess::Ranks * 6u;
-    sf::VertexArray vertices(sf::PrimitiveType::Triangles, VertexCount);
-
-    unsigned int vertexIndex = 0u;
-
-    for (int rank = 0; rank < Chess::Ranks; ++rank) {
-        const float y = static_cast<float>(rank) * m_SquareSize;
-
-        for (int file = 0; file < Chess::Files; ++file) {
-            const float x = static_cast<float>(file) * m_SquareSize + offset_x;
-
-            const sf::Color color = colors[(file + rank) % 2];
-
-            const sf::Vertex topleft = sf::Vertex(sf::Vector2f(x, y), color);
-            const sf::Vertex topright = sf::Vertex(sf::Vector2f(x + m_SquareSize, y), color);
-            const sf::Vertex bottomright = sf::Vertex(sf::Vector2f(x + m_SquareSize, y + m_SquareSize), color);
-            const sf::Vertex bottomleft = sf::Vertex(sf::Vector2f(x, y + m_SquareSize), color);
-
-            vertices[vertexIndex++] = topleft;
-            vertices[vertexIndex++] = topright;
-            vertices[vertexIndex++] = bottomright;
-
-            vertices[vertexIndex++] = topleft;
-            vertices[vertexIndex++] = bottomright;
-            vertices[vertexIndex++] = bottomleft;
-        }
-    }
-
-    return vertices;
 }
 
 void Application::joinThreads() {
@@ -493,7 +405,6 @@ void Application::HandleMouseButtonPressed(sf::Mouse::Button button, sf::Vector2
         const auto [rank, file] = mapMousePosToCoordinates(position);
         const int idx = Chess::To2DIndex(rank, file);
 
-        m_Markers ^= Chess::IndexToMask(idx); // toggle
         m_CurrentlyDrawingArrow.Start = idx;
     }
 }
@@ -507,8 +418,32 @@ void Application::HandleMouseButtonReleased(sf::Mouse::Button button, sf::Vector
         const auto [rank, file] = mapMousePosToCoordinates(position);
         const int idx = Chess::To2DIndex(rank, file);
 
-        m_Markers |= Chess::IndexToMask(idx); // turn on
-        if (m_CurrentlyDrawingArrow) m_Arrows.push_back(m_CurrentlyDrawingArrow);
+        m_CurrentlyDrawingArrow.End = idx;
+
+        if (m_CurrentlyDrawingArrow.Start == m_CurrentlyDrawingArrow.End) {
+            m_Markers ^= Chess::IndexToMask(idx); // toggle marker
+        } else if (m_CurrentlyDrawingArrow) {
+            auto it = std::find_if(m_Arrows.begin(), m_Arrows.end(),
+                [this](const Arrow& arrow) -> bool {
+                    return (
+                        arrow.Start == m_CurrentlyDrawingArrow.Start && arrow.End == m_CurrentlyDrawingArrow.End
+                    );
+                }
+            );
+
+            if (it != m_Arrows.end()) {
+                m_Arrows.erase(it);
+            } else {
+                m_Arrows.push_back(m_CurrentlyDrawingArrow);
+            }
+
+            m_Markers |= (
+                // enable start
+                Chess::IndexToMask(m_CurrentlyDrawingArrow.Start) |
+                // enable end
+                Chess::IndexToMask(m_CurrentlyDrawingArrow.End)
+            );
+        }
 
         m_CurrentlyDrawingArrow = Arrow();
     }
@@ -530,41 +465,41 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
             const float targetTilt = (delta.x / speed) * std::min(speed / 18.f, 1.f) * MaxTilt;
             m_DragTilt = targetTilt;
         }
-    }
+    } else {
+        const bool hoveringPanel = position.x > m_EvaluationBarWidth + m_SquareSize * Chess::Files;
 
-    m_LastMousePosition = position;
+        Button* nowHovered = nullptr;
 
-    const bool hoveringPanel = position.x > m_EvaluationBarWidth + m_SquareSize * Chess::Files;
-
-    Button* nowHovered = nullptr;
-
-    if (hoveringPanel) {
-        for (Button& button : m_Buttons) {
-            if (
-                position.x >= button.Position_X && position.x <= (button.Position_X + button.Width) &&
-                position.y >= button.Position_Y && position.y <= (button.Position_Y + button.Height)
-            ) {
-                nowHovered = &button;
-                break;
+        if (hoveringPanel) {
+            for (Button& button : m_Buttons) {
+                if (
+                    position.x >= button.Position_X && position.x <= (button.Position_X + button.Width) &&
+                    position.y >= button.Position_Y && position.y <= (button.Position_Y + button.Height)
+                ) {
+                    nowHovered = &button;
+                    break;
+                }
             }
         }
-    }
 
-    for (Button& button : m_Buttons) {
-        const bool wasHovered = button.Hovered;
-        button.Hovered = &button == nowHovered;
+        for (Button& button : m_Buttons) {
+            const bool wasHovered = button.Hovered;
+            button.Hovered = &button == nowHovered;
 
-        if (button.Hovered && !wasHovered) {
-            button.HoverEnterTime = std::chrono::steady_clock::now();
+            if (button.Hovered && !wasHovered) {
+                button.HoverEnterTime = std::chrono::steady_clock::now();
+            }
         }
-    }
 
-    m_HoveringPanel = hoveringPanel;
+        m_HoveringPanel = hoveringPanel;
+    }
 
     if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
         const auto [rank, file] = mapMousePosToCoordinates(position);
         m_CurrentlyDrawingArrow.End = Chess::To2DIndex(rank, file);
     }
+
+    m_LastMousePosition = position;
 }
 
 void Application::HandleMouseLeftWindow() {
@@ -966,43 +901,74 @@ static void RenderRoundedQuad(
     target.draw(vertices);
 }
 
-static void RenderCaptureOverlay(
+static void RenderFrame(
     sf::RenderTarget& target,
     sf::Color color,
     sf::Vector2f position,
     sf::Vector2f size,
-    float triangleLength
+    float thicknessFactor
 ) {
-    const sf::Vector2f triangleSize = size * triangleLength;
+    const float thickness = std::min(size.x, size.y) * thicknessFactor;
 
-    const sf::Vertex topLeft[] = {
-        sf::Vertex(position, color),
-        sf::Vertex(sf::Vector2f(position.x + triangleSize.x, position.y), color),
-        sf::Vertex(sf::Vector2f(position.x, position.y + triangleSize.y), color)
+    const float left = position.x;
+    const float right = position.x + size.x;
+    const float top = position.y;
+    const float bottom = position.y + size.y;
+
+    const float innerLeft = left + thickness;
+    const float innerRight = right - thickness;
+    const float innerTop = top + thickness;
+    const float innerBottom = bottom - thickness;
+
+    sf::Vertex vertices[] = {
+        sf::Vertex(sf::Vector2f(left, top), color),
+        sf::Vertex(sf::Vector2f(innerLeft, innerTop), color),
+
+        sf::Vertex(sf::Vector2f(right, top), color),
+        sf::Vertex(sf::Vector2f(innerRight, innerTop), color),
+
+        sf::Vertex(sf::Vector2f(right, bottom), color),
+        sf::Vertex(sf::Vector2f(innerRight, innerBottom), color),
+
+        sf::Vertex(sf::Vector2f(left, bottom), color),
+        sf::Vertex(sf::Vector2f(innerLeft, innerBottom), color),
+
+        sf::Vertex(sf::Vector2f(left, top), color),
+        sf::Vertex(sf::Vector2f(innerLeft, innerTop), color)
     };
 
-    const sf::Vertex topRight[] = {
-        sf::Vertex(sf::Vector2f(position.x + size.x, position.y), color),
-        sf::Vertex(sf::Vector2f(position.x + size.x - triangleSize.x, position.y), color),
-        sf::Vertex(sf::Vector2f(position.x + size.x, position.y + triangleSize.y), color)
-    };
+    target.draw(vertices, 10, sf::PrimitiveType::TriangleStrip);
+}
 
-    const sf::Vertex bottomLeft[] = {
-        sf::Vertex(sf::Vector2f(position.x, position.y + size.y), color),
-        sf::Vertex(sf::Vector2f(position.x + triangleSize.x, position.y + size.y), color),
-        sf::Vertex(sf::Vector2f(position.x, position.y + size.y - triangleSize.y), color)
-    };
+void Application::renderCheckerboard(sf::RenderTarget& target) const {
+    sf::VertexArray vertices(sf::PrimitiveType::Triangles, Chess::Files * Chess::Ranks * 6u);
 
-    const sf::Vertex bottomRight[] = {
-        sf::Vertex(sf::Vector2f(position.x + size.x, position.y + size.y), color),
-        sf::Vertex(sf::Vector2f(position.x + size.x - triangleSize.x, position.y + size.y), color),
-        sf::Vertex(sf::Vector2f(position.x + size.x, position.y + size.y - triangleSize.y), color)
-    };
+    unsigned int vertexIndex = 0u;
 
-    target.draw(topLeft, 3, sf::PrimitiveType::Triangles);
-    target.draw(topRight, 3, sf::PrimitiveType::Triangles);
-    target.draw(bottomLeft, 3, sf::PrimitiveType::Triangles);
-    target.draw(bottomRight, 3, sf::PrimitiveType::Triangles);
+    for (int rank = 0; rank < Chess::Ranks; ++rank) {
+        const float y = static_cast<float>(rank) * m_SquareSize;
+
+        for (int file = 0; file < Chess::Files; ++file) {
+            const float x = static_cast<float>(file) * m_SquareSize + m_EvaluationBarWidth;
+
+            const sf::Color color = m_Theme->GetCheckerboard()[(file + rank) % 2];
+
+            const sf::Vertex topleft = sf::Vertex(sf::Vector2f(x, y), color);
+            const sf::Vertex topright = sf::Vertex(sf::Vector2f(x + m_SquareSize, y), color);
+            const sf::Vertex bottomright = sf::Vertex(sf::Vector2f(x + m_SquareSize, y + m_SquareSize), color);
+            const sf::Vertex bottomleft = sf::Vertex(sf::Vector2f(x, y + m_SquareSize), color);
+
+            vertices[vertexIndex++] = topleft;
+            vertices[vertexIndex++] = topright;
+            vertices[vertexIndex++] = bottomright;
+
+            vertices[vertexIndex++] = topleft;
+            vertices[vertexIndex++] = bottomright;
+            vertices[vertexIndex++] = bottomleft;
+        }
+    }
+
+    target.draw(vertices);
 }
 
 void Application::renderRanksAndFiles(sf::RenderTarget& target) const {
@@ -1016,7 +982,7 @@ void Application::renderRanksAndFiles(sf::RenderTarget& target) const {
 
         sf::Text text(m_Font, rankChar, charSize);
         text.setStyle(sf::Text::Style::Bold);
-        text.setFillColor(Theme::Checkerboard[(rank + m_Flipped) % 2]);
+        text.setFillColor(m_Theme->GetCheckerboard()[(rank + m_Flipped) % 2]);
 
         const sf::FloatRect bounds = text.getLocalBounds();
         text.setOrigin(bounds.position);
@@ -1036,7 +1002,7 @@ void Application::renderRanksAndFiles(sf::RenderTarget& target) const {
 
         sf::Text text(m_Font, fileChar, charSize);
         text.setStyle(sf::Text::Style::Bold);
-        text.setFillColor(Theme::Checkerboard[file % 2]);
+        text.setFillColor(m_Theme->GetCheckerboard()[file % 2]);
 
         const sf::FloatRect bounds = text.getLocalBounds();
         text.setOrigin(bounds.position);
@@ -1070,8 +1036,10 @@ void Application::renderPiece(sf::RenderTarget& target, Chess::Piece piece, floa
     const float tx = static_cast<float>(piece.Type) * PieceTextureWidth;
     const float ty = static_cast<float>(piece.Color) * PieceTextureHeight;
 
-    const float cx = x + m_SquareSize * 0.5f;
-    const float cy = y + m_SquareSize * 0.5f;
+    const float halfSquareSize = m_SquareSize * 0.5f;
+
+    const float cx = x + halfSquareSize;
+    const float cy = y + halfSquareSize;
 
     const float cosA = std::cos(angle);
     const float sinA = std::sin(angle);
@@ -1117,13 +1085,11 @@ void Application::renderPieces(sf::RenderTarget& target, bool mouseHeld) const {
             if ((occupancyMap & Chess::IndexToMask(idx)) == 0ull) continue;
 
             // skip rendering this piece if its being animated
-            if (
-                std::any_of(m_PieceAnimations.begin(), m_PieceAnimations.end(),
-                    [idx](const PieceMoveAnim& anim) -> bool {
-                        return anim.Move.TargetSquare == idx;
-                    }
-                )
-            ) continue;
+            if (std::any_of(m_PieceAnimations.begin(), m_PieceAnimations.end(),
+                [idx](const PieceMoveAnim& anim) -> bool {
+                    return anim.Move.TargetSquare == idx;
+                }
+            )) continue;
 
             renderPiece(target, m_Board.GetPieceAt(idx), x, y);
         }
@@ -1146,12 +1112,12 @@ void Application::renderEvaluationBar(sf::RenderTarget& target) const {
     RenderRoundedQuad(barRT, sf::Color::White, sf::Vector2f(), sf::Vector2f(barWidth, barHeight), 0.4f);
 
     sf::RectangleShape topFill(sf::Vector2f(barWidth, midPos));
-    topFill.setFillColor(Theme::EvaluationBar[!m_Flipped]);
+    topFill.setFillColor(m_Theme->GetEvaluationBar()[!m_Flipped]);
     barRT.draw(topFill, sf::BlendMultiply);
 
     sf::RectangleShape bottomFill(sf::Vector2f(barWidth, barHeight - midPos));
     bottomFill.setPosition(sf::Vector2f(0.f, midPos));
-    bottomFill.setFillColor(Theme::EvaluationBar[m_Flipped]);
+    bottomFill.setFillColor(m_Theme->GetEvaluationBar()[m_Flipped]);
     barRT.draw(bottomFill, sf::BlendMultiply);
 
     barRT.display();
@@ -1166,20 +1132,16 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
     const std::size_t hoveredIdx = Chess::To2DIndex(mouseRank, mouseFile);
 
     for (const Chess::Move& move : m_LegalMovesForSelectedPiece) {
-        const unsigned int rank = mapRank(Chess::ToRank(move.TargetSquare));
-        const unsigned int file = mapFile(Chess::ToFile(move.TargetSquare));
+        const int rank = mapRank(Chess::ToRank(move.TargetSquare));
+        const int file = mapFile(Chess::ToFile(move.TargetSquare));
 
         const float y = rank * m_SquareSize;
         const float x = file * m_SquareSize + m_EvaluationBarWidth;
 
-        if (move.TargetSquare == hoveredIdx) {
-            RenderQuad(target, Theme::LegalMoveHighlight, sf::Vector2f(x, y), sf::Vector2f(m_SquareSize, m_SquareSize));
+        if (m_Theme->DrawHoveredLegalSq() && move.TargetSquare == hoveredIdx) {
+            RenderQuad(target, m_Theme->GetLegalMoveHighlight(), sf::Vector2f(x, y), sf::Vector2f(m_SquareSize, m_SquareSize));
         } else if (m_Board.GetOccupancyMap(Chess::InvertColor(m_SideToMove)) & Chess::IndexToMask(move.TargetSquare)) {
-            RenderCaptureOverlay(
-                target, Theme::LegalMoveHighlight,
-                sf::Vector2f(x, y), sf::Vector2f(m_SquareSize, m_SquareSize),
-                0.167f
-            );
+            m_Theme->RenderCaptureOverlay(target, sf::Vector2f(x, y), m_SquareSize);
         } else {
             const float circleRadius = m_SquareSize * 0.15f;
 
@@ -1187,10 +1149,26 @@ void Application::renderLegalMoves(sf::RenderTarget& target, sf::Vector2i mouseP
 
             const float offset = m_SquareSize * 0.5f - circleRadius;
             circle.setPosition(sf::Vector2f(x + offset, y + offset));
-            circle.setFillColor(Theme::LegalMoveHighlight);
+            circle.setFillColor(m_Theme->GetLegalMoveHighlight());
 
             target.draw(circle);
         }
+    }
+
+    if (
+        m_Theme->DrawHoveredSqOutline() &&
+        mousePosition.x > m_EvaluationBarWidth &&
+        mousePosition.x < (Chess::Files * m_SquareSize + m_EvaluationBarWidth)
+    ) {
+        const int file = mapFile(Chess::ToFile(hoveredIdx));
+        const int rank = mapRank(Chess::ToRank(hoveredIdx));
+
+        RenderFrame(
+            target, sf::Color(255, 255, 255, 166),
+            sf::Vector2f(m_EvaluationBarWidth + file * m_SquareSize, rank * m_SquareSize),
+            sf::Vector2f(m_SquareSize, m_SquareSize),
+            0.05f
+        );
     }
 }
 
@@ -1219,88 +1197,93 @@ void Application::renderButton(sf::RenderTarget& target, const Button& button) c
         );
     }
 
-    const bool buttonFocused = (
+    // button is focused
+    if (
         button.Hovered &&
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - button.HoverEnterTime
         ).count() >= Button::TooltipThreshold
-    );
+    ) {
+        const std::string& note = button.Note[
+            !button.Note[1].empty() && sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)
+        ];
 
-    if (buttonFocused && !button.Note.empty()) {
-        const sf::Vector2u windowSize = target.getSize();
+        if (!note.empty()) {
+            const sf::Vector2u windowSize = target.getSize();
 
-        const float paddingH = m_SquareSize * 0.09f;
-        const float paddingV = m_SquareSize * 0.07f;
-        const float gap = m_SquareSize * 0.08f;
-        const float arrowHalf = m_SquareSize * 0.04f;
-        const float arrowDepth = m_SquareSize * 0.04f;
-        const float maxBubbleW = m_SquareSize * 1.1f;
+            const float paddingH = m_SquareSize * 0.09f;
+            const float paddingV = m_SquareSize * 0.07f;
+            const float gap = m_SquareSize * 0.08f;
+            const float arrowHalf = m_SquareSize * 0.04f;
+            const float arrowDepth = m_SquareSize * 0.04f;
+            const float maxBubbleW = m_SquareSize * 1.1f;
 
-        const unsigned int charSize = static_cast<unsigned int>(m_SquareSize * 0.175f);
-        const unsigned int fontSize = static_cast<unsigned int>(m_SquareSize * 0.145f);
+            const unsigned int charSize = static_cast<unsigned int>(m_SquareSize * 0.175f);
+            const unsigned int fontSize = static_cast<unsigned int>(m_SquareSize * 0.145f);
 
-        sf::Text text(m_Font, button.Note, fontSize);
-        text.setStyle(sf::Text::Style::Bold);
+            sf::Text text(m_Font, note, fontSize);
+            text.setStyle(sf::Text::Style::Bold);
 
-        std::string wrappedNote;
-        {
-            std::istringstream words(button.Note);
-            std::string word, line;
+            std::string wrappedNote;
+            {
+                std::istringstream words(note);
+                std::string word, line;
 
-            while (words >> word) {
-                const std::string test = line.empty() ? word : (line + ' ' + word);
-                sf::Text probe(m_Font, test, fontSize);
-                probe.setStyle(sf::Text::Style::Bold);
-                if (!line.empty() && word.size() > 1 && probe.getLocalBounds().size.x + paddingH * 2.f > maxBubbleW) {
-                    wrappedNote += line + '\n';
-                    line = word;
-                } else {
-                    line = test;
+                while (words >> word) {
+                    const std::string test = line.empty() ? word : (line + ' ' + word);
+                    sf::Text probe(m_Font, test, fontSize);
+                    probe.setStyle(sf::Text::Style::Bold);
+                    if (!line.empty() && word.size() > 1 && probe.getLocalBounds().size.x + paddingH * 2.f > maxBubbleW) {
+                        wrappedNote += line + '\n';
+                        line = word;
+                    } else {
+                        line = test;
+                    }
                 }
+
+                wrappedNote += line;
             }
 
-            wrappedNote += line;
+            text.setString(wrappedNote);
+
+            const sf::FloatRect bounds = text.getLocalBounds();
+            const float bubbleW = bounds.size.x + paddingH * 2.f;
+            const float bubbleH = bounds.size.y + paddingV * 2.f;
+
+            const float buttonCY = button.Position_Y + button.Height * 0.5f;
+
+            float bubbleX = button.Position_X - gap - arrowDepth - bubbleW;
+            float bubbleY = buttonCY - bubbleH * 0.5f;
+
+            const float margin = 4.f;
+            bubbleY = std::max(margin, std::min(bubbleY, static_cast<float>(windowSize.y) - bubbleH - margin));
+            bubbleX = std::max(margin, bubbleX);
+
+            const float arrowTipY = std::clamp(
+                buttonCY,
+                bubbleY + arrowHalf + 6.f,
+                bubbleY + bubbleH - arrowHalf - 6.f
+            );
+
+            RenderRoundedQuad(target, m_Theme->GetOverlayPill(), sf::Vector2f(bubbleX, bubbleY), sf::Vector2f(bubbleW, bubbleH), 0.18f);
+
+            const float arrowBaseX = bubbleX + bubbleW;
+            const float arrowTipX = arrowBaseX + arrowDepth;
+
+            const sf::Vertex arrow[] = {
+                sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY - arrowHalf), m_Theme->GetOverlayPill()),
+                sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY + arrowHalf), m_Theme->GetOverlayPill()),
+                sf::Vertex(sf::Vector2f(arrowTipX, arrowTipY), m_Theme->GetOverlayPill()),
+            };
+
+            target.draw(arrow, 3, sf::PrimitiveType::Triangles);
+
+            text.setFillColor(m_Theme->GetTextPrimary());
+            text.setOrigin(bounds.position);
+            text.setPosition(sf::Vector2f(bubbleX + paddingH, bubbleY + paddingV));
+
+            target.draw(text);
         }
-
-        text.setString(wrappedNote);
-
-        const sf::FloatRect bounds = text.getLocalBounds();
-        const float bubbleW = bounds.size.x + paddingH * 2.f;
-        const float bubbleH = bounds.size.y + paddingV * 2.f;
-
-        const float buttonCY = button.Position_Y + button.Height * 0.5f;
-
-        float bubbleX = button.Position_X - gap - arrowDepth - bubbleW;
-        float bubbleY = buttonCY - bubbleH * 0.5f;
-
-        const float margin = 4.f;
-        bubbleY = std::max(margin, std::min(bubbleY, static_cast<float>(windowSize.y) - bubbleH - margin));
-        bubbleX = std::max(margin, bubbleX);
-
-        const float arrowTipY = std::clamp(
-            buttonCY,
-            bubbleY + arrowHalf + 6.f,
-            bubbleY + bubbleH - arrowHalf - 6.f
-        );
-
-        RenderRoundedQuad(target, Theme::OverlayPill, sf::Vector2f(bubbleX, bubbleY), sf::Vector2f(bubbleW, bubbleH), 0.18f);
-
-        const float arrowBaseX = bubbleX + bubbleW;
-        const float arrowTipX = arrowBaseX + arrowDepth;
-
-        const sf::Vertex arrow[] = {
-            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY - arrowHalf), Theme::OverlayPill),
-            sf::Vertex(sf::Vector2f(arrowBaseX, arrowTipY + arrowHalf), Theme::OverlayPill),
-            sf::Vertex(sf::Vector2f(arrowTipX, arrowTipY), Theme::OverlayPill),
-        };
-
-        target.draw(arrow, 3, sf::PrimitiveType::Triangles);
-
-        text.setFillColor(Theme::TextPrimary);
-        text.setOrigin(bounds.position);
-        text.setPosition(sf::Vector2f(bubbleX + paddingH, bubbleY + paddingV));
-
-        target.draw(text);
     }
 }
 
@@ -1308,8 +1291,8 @@ void Application::renderBitboard(sf::RenderTarget& target, uint64_t bitboard, sf
     for (int idx = 0; idx < 64; ++idx) {
         if (!(bitboard & Chess::IndexToMask(idx))) continue;
 
-        const unsigned int rank = mapRank(Chess::ToRank(idx));
-        const unsigned int file = mapFile(Chess::ToFile(idx));
+        const int rank = mapRank(Chess::ToRank(idx));
+        const int file = mapFile(Chess::ToFile(idx));
 
         const float y = rank * m_SquareSize;
         const float x = file * m_SquareSize + m_EvaluationBarWidth;
@@ -1344,9 +1327,9 @@ void Application::renderPopup(sf::RenderTarget& target) const {
     const float slideOffset = (1.f - eased) * 18.f;
     const sf::Vector2f pillPos(targetX, targetY + slideOffset);
 
-    RenderRoundedQuad(target, Utils::ConvertAlpha(Theme::OverlayPill, eased), pillPos, sf::Vector2f(pillW, pillH), 0.4f);
+    RenderRoundedQuad(target, Utils::ConvertAlpha(m_Theme->GetOverlayPill(), eased), pillPos, sf::Vector2f(pillW, pillH), 0.4f);
 
-    text.setFillColor(Utils::ConvertAlpha(Theme::TextPrimary, eased));
+    text.setFillColor(Utils::ConvertAlpha(m_Theme->GetTextPrimary(), eased));
     text.setPosition(sf::Vector2f(pillPos.x + paddingH, pillPos.y + paddingV));
 
     target.draw(text);
@@ -1360,7 +1343,7 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
     const float eased = rawP * rawP * (3.f - 2.f * rawP);
 
     // bg overlay
-    RenderQuad(target, Utils::ConvertAlpha(Theme::SurfaceOverlay, eased),
+    RenderQuad(target, Utils::ConvertAlpha(m_Theme->GetSurfaceOverlay(), eased),
         sf::Vector2f(m_EvaluationBarWidth, 0.f),
         sf::Vector2f(Chess::Files * m_SquareSize, H)
     );
@@ -1368,7 +1351,7 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
     // particles
     for (const GameOverParticle& p : m_GameOverParticles) {
         const float alpha = std::max(0.f, p.Life);
-        sf::Color col = Theme::Particle[p.ColorIndex];
+        sf::Color col = m_Theme->GetParticles()[p.ColorIndex];
         col.a = 255 * alpha * std::min(1.f, eased * 2.f);
 
         if (p.Shape == 2) {
@@ -1425,13 +1408,13 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
 
     const sf::Vector2f cardPos(boardCX - cardW * 0.5f, boardCY - cardH * 0.5f + slideY);
 
-    RenderRoundedQuad(target, Utils::ConvertAlpha(Theme::SurfaceRaised, eased), cardPos, sf::Vector2f(cardW, cardH), 0.1f);
+    RenderRoundedQuad(target, Utils::ConvertAlpha(m_Theme->GetSurfaceRaised(), eased), cardPos, sf::Vector2f(cardW, cardH), 0.1f);
 
     // decorative separator line
     const float lineW = cardW * 0.5f;
     const float lineY = cardPos.y + cardPadV + tb.size.y + cardGap * 0.45f;
 
-    RenderQuad(target, Utils::ConvertAlpha(Theme::TextSecondary, eased * 0.45f),
+    RenderQuad(target, Utils::ConvertAlpha(m_Theme->GetTextSecondary(), eased * 0.45f),
         sf::Vector2f(boardCX - lineW * 0.5f, lineY),
         sf::Vector2f(lineW, 1.5f)
     );
@@ -1439,13 +1422,13 @@ void Application::renderCheckmateOverlay(sf::RenderTarget& target) const {
     // title text - horizontally centred
     titleText.setOrigin(sf::Vector2f(tb.position.x + tb.size.x * 0.5f, tb.position.y));
     titleText.setPosition(sf::Vector2f(boardCX, cardPos.y + cardPadV));
-    titleText.setFillColor(Utils::ConvertAlpha(Theme::TextPrimary, eased));
+    titleText.setFillColor(Utils::ConvertAlpha(m_Theme->GetTextPrimary(), eased));
     target.draw(titleText);
 
     // subtitle text
     subText.setOrigin(sf::Vector2f(sb.position.x + sb.size.x * 0.5f, sb.position.y));
     subText.setPosition(sf::Vector2f(boardCX, cardPos.y + cardPadV + tb.size.y + cardGap));
-    subText.setFillColor(Utils::ConvertAlpha(Theme::TextSecondary, eased));
+    subText.setFillColor(Utils::ConvertAlpha(m_Theme->GetTextSecondary(), eased));
     target.draw(subText);
 }
 
@@ -1510,14 +1493,16 @@ void Application::renderArrow(sf::RenderTarget& target, Arrow arrow) const {
     const float headLength = m_SquareSize * 0.40f;
     const float headWidth = m_SquareSize * 0.45f;
 
+    const float halfSquareSize = m_SquareSize * 0.5f;
+
     const sf::Vector2f startPos(
-        mapFile(Chess::ToFile(arrow.Start)) * m_SquareSize + m_EvaluationBarWidth + m_SquareSize * 0.5f,
-        mapRank(Chess::ToRank(arrow.Start)) * m_SquareSize + m_SquareSize * 0.5f
+        mapFile(Chess::ToFile(arrow.Start)) * m_SquareSize + m_EvaluationBarWidth + halfSquareSize,
+        mapRank(Chess::ToRank(arrow.Start)) * m_SquareSize + halfSquareSize
     );
 
     const sf::Vector2f endPos(
-        mapFile(Chess::ToFile(arrow.End)) * m_SquareSize + m_EvaluationBarWidth + m_SquareSize * 0.5f,
-        mapRank(Chess::ToRank(arrow.End)) * m_SquareSize + m_SquareSize * 0.5f
+        mapFile(Chess::ToFile(arrow.End)) * m_SquareSize + m_EvaluationBarWidth + halfSquareSize,
+        mapRank(Chess::ToRank(arrow.End)) * m_SquareSize + halfSquareSize
     );
 
     const int rankDiff = std::abs(
@@ -1529,7 +1514,10 @@ void Application::renderArrow(sf::RenderTarget& target, Arrow arrow) const {
     );
 
     // knight move
-    if ((rankDiff == 2 && fileDiff == 1) || (rankDiff == 1 && fileDiff == 2)) {
+    if (
+        m_Theme->DrawKnightArrowAsL() &&
+        ((rankDiff == 2 && fileDiff == 1) || (rankDiff == 1 && fileDiff == 2))
+    ) {
         const sf::Vector2f midPos = (rankDiff == 2 && fileDiff == 1)
             ? sf::Vector2f(startPos.x, endPos.y) : sf::Vector2f(endPos.x, startPos.y);
 
@@ -1553,29 +1541,29 @@ void Application::renderArrow(sf::RenderTarget& target, Arrow arrow) const {
 
             // first segment
             const sf::Vertex shaft1[] = {
-                sf::Vertex(startPos + perp1 * (arrowWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(startPos - perp1 * (arrowWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(seg1End + perp1 * (arrowWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(seg1End - perp1 * (arrowWidth * 0.5f), Theme::Arrow)
+                sf::Vertex(startPos + perp1 * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(startPos - perp1 * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(seg1End + perp1 * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(seg1End - perp1 * (arrowWidth * 0.5f), m_Theme->GetArrow())
             };
 
             target.draw(shaft1, 4, sf::PrimitiveType::TriangleStrip);
 
             // second segment
             const sf::Vertex shaft2[] = {
-                sf::Vertex(seg2Start + perp2 * (arrowWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(seg2Start - perp2 * (arrowWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(shaftEnd + perp2 * (arrowWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(shaftEnd - perp2 * (arrowWidth * 0.5f), Theme::Arrow)
+                sf::Vertex(seg2Start + perp2 * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(seg2Start - perp2 * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(shaftEnd + perp2 * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(shaftEnd - perp2 * (arrowWidth * 0.5f), m_Theme->GetArrow())
             };
 
             target.draw(shaft2, 4, sf::PrimitiveType::TriangleStrip);
 
             // head
             const sf::Vertex head[] = {
-                sf::Vertex(shaftEnd + perp2 * (headWidth * 0.5f), Theme::Arrow),
-                sf::Vertex(endPos, Theme::Arrow),
-                sf::Vertex(shaftEnd - perp2 * (headWidth * 0.5f), Theme::Arrow)
+                sf::Vertex(shaftEnd + perp2 * (headWidth * 0.5f), m_Theme->GetArrow()),
+                sf::Vertex(endPos, m_Theme->GetArrow()),
+                sf::Vertex(shaftEnd - perp2 * (headWidth * 0.5f), m_Theme->GetArrow())
             };
 
             target.draw(head, 3, sf::PrimitiveType::Triangles);
@@ -1598,19 +1586,19 @@ void Application::renderArrow(sf::RenderTarget& target, Arrow arrow) const {
 
         // shaft
         const sf::Vertex shaft[] = {
-            sf::Vertex(adjustedStart + perp * (arrowWidth * 0.5f), Theme::Arrow),
-            sf::Vertex(adjustedStart - perp * (arrowWidth * 0.5f), Theme::Arrow),
-            sf::Vertex(shaftEnd + perp * (arrowWidth * 0.5f), Theme::Arrow),
-            sf::Vertex(shaftEnd - perp * (arrowWidth * 0.5f), Theme::Arrow)
+            sf::Vertex(adjustedStart + perp * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+            sf::Vertex(adjustedStart - perp * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+            sf::Vertex(shaftEnd + perp * (arrowWidth * 0.5f), m_Theme->GetArrow()),
+            sf::Vertex(shaftEnd - perp * (arrowWidth * 0.5f), m_Theme->GetArrow())
         };
 
         target.draw(shaft, 4, sf::PrimitiveType::TriangleStrip);
 
         // head
         const sf::Vertex head[] = {
-            sf::Vertex(shaftEnd + perp * (headWidth * 0.5f), Theme::Arrow),
-            sf::Vertex(adjustedEnd, Theme::Arrow),
-            sf::Vertex(shaftEnd - perp * (headWidth * 0.5f), Theme::Arrow)
+            sf::Vertex(shaftEnd + perp * (headWidth * 0.5f), m_Theme->GetArrow()),
+            sf::Vertex(adjustedEnd, m_Theme->GetArrow()),
+            sf::Vertex(shaftEnd - perp * (headWidth * 0.5f), m_Theme->GetArrow())
         };
 
         target.draw(head, 3, sf::PrimitiveType::Triangles);
@@ -1621,10 +1609,10 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
     const float halfSquareSize = m_SquareSize * 0.5f;
     const bool mouseHeld = sf::Mouse::isButtonPressed(sf::Mouse::Button::Left);
 
-    target.clear(Theme::Background);
+    target.clear(m_Theme->GetBackground());
 
     /* Board */ {
-        target.draw(m_CheckerboardMesh);
+        renderCheckerboard(target);
 
         renderRanksAndFiles(target);
 
@@ -1643,25 +1631,41 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
         for (uint64_t tmp = m_Markers; tmp; tmp &= tmp - 1) {
             const int idx = Chess::MaskToIndex(tmp);
 
-            RenderQuad(
-                target, Theme::MarkerHighlight,
+            m_Theme->RenderMarker(
+                target,
                 sf::Vector2f(
                     mapFile(Chess::ToFile(idx)) * m_SquareSize + m_EvaluationBarWidth,
                     mapRank(Chess::ToRank(idx)) * m_SquareSize
                 ),
-                sf::Vector2f(m_SquareSize, m_SquareSize)
+                m_SquareSize
             );
         }
 
         // move history
         if (m_LastMove) {
-            renderSquareHighlight(target, m_LastMove.StartingSquare, Theme::LastMoveHighlight);
-            renderSquareHighlight(target, m_LastMove.TargetSquare, Theme::LastMoveHighlight);
+            renderSquareHighlight(target, m_LastMove.StartingSquare, m_Theme->GetLastMoveHighlight());
+
+            if (m_Theme->DrawLastMoveTargetIfCapturable() || !std::any_of(
+                m_LegalMovesForSelectedPiece.begin(), m_LegalMovesForSelectedPiece.end(),
+                [this](Chess::Move move) -> bool {
+                    return move.TargetSquare == m_LastMove.TargetSquare;
+                }
+            )) {
+                renderSquareHighlight(target, m_LastMove.TargetSquare, m_Theme->GetLastMoveHighlight());
+            }
         }
 
         // selected piece
         if (hasSelectedPiece()) {
-            renderSquareHighlight(target, m_SelectedPiece, Theme::LastMoveHighlight);
+            if (m_Theme->DrawSelectedPieceGhost()) {
+                renderPiece(
+                    target, m_Board.GetPieceAt(m_SelectedPiece),
+                    mapFile(Chess::ToFile(m_SelectedPiece)) * m_SquareSize + m_EvaluationBarWidth,
+                    mapRank(Chess::ToRank(m_SelectedPiece)) * m_SquareSize
+                );
+            }
+
+            renderSquareHighlight(target, m_SelectedPiece, m_Theme->GetSelectedPiece());
         }
 
         // legal move
@@ -1696,16 +1700,6 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
                 animTilt
             );
         }
-
-        // dragged piece
-        if (mouseHeld && hasSelectedPiece()) {
-            renderPiece(
-                target, m_Board.GetPieceAt(m_SelectedPiece),
-                static_cast<float>(mousePosition.x) - halfSquareSize,
-                static_cast<float>(mousePosition.y) - halfSquareSize,
-                m_DragTilt
-            );
-        }
     }
 
     /* UI */ {
@@ -1723,10 +1717,19 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
 
         // panel mask (for fade effect)
         RenderQuad(
-            target, Utils::ConvertAlpha(Theme::Background, 1.f - m_PanelBrightness),
+            target, Utils::ConvertAlpha(m_Theme->GetBackground(), 1.f - m_PanelBrightness),
             sf::Vector2f(target.getSize().x - m_PanelWidth, 0.f),
             sf::Vector2f(m_PanelWidth, target.getSize().y)
         );
+
+        // dragged piece
+        if (mouseHeld && hasSelectedPiece()) {
+            renderPiece(
+                target, m_Board.GetPieceAt(m_SelectedPiece),
+                mousePosition.x - halfSquareSize, mousePosition.y - halfSquareSize,
+                m_DragTilt
+            );
+        }
 
         if (m_GameOverResult != GameOverResult::None) {
             renderCheckmateOverlay(target);

@@ -1,21 +1,24 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <filesystem>
 #include <thread>
 #include <chrono>
+#include <memory>
 
 #include "SFML/Graphics.hpp"
 
 #include "Engine/Chess.hpp"
 
+#include "GUI/Theme.hpp"
 #include "GUI/SoundSystem.hpp"
 
 class Application final {
 private:
     struct Button {
         static constexpr inline const unsigned int TooltipThreshold = 350; // ms
-        
+
         float Position_X{0.f};
         float Position_Y{0.f};
         float Width{0.f};
@@ -24,7 +27,7 @@ private:
         uint8_t TextureIndex{0};
 
         std::function<void(Button&)> Callback{nullptr};
-        std::string Note;
+        std::array<std::string, 2> Note;
 
         std::chrono::steady_clock::time_point HoverEnterTime;
         bool Hovered{false};
@@ -43,9 +46,11 @@ private:
         std::string Info;
 
         Popup() = default;
+        
         Popup(const std::string& info) : Info(info), Timer(1.f) {
             for (char& c : Info) c = std::toupper(c);
         }
+        
         Popup(const std::string& info, float timer) : Info(info), Timer(timer) {
             for (char& c : Info) c = std::toupper(c);
         }
@@ -62,7 +67,7 @@ private:
         Stalemate,
         DrawFiftyMove,
         DrawRepetition,
-        DrawInsufficient,
+        DrawInsufficient
     };
 
     struct GameOverParticle {
@@ -97,21 +102,21 @@ private:
     }
 
     [[nodiscard]]
-    inline unsigned int mapRank(unsigned int rank) const noexcept {
+    inline int mapRank(int rank) const noexcept {
         return m_Flipped ? (Chess::Ranks - 1 - rank) : rank;
     }
 
     [[nodiscard]]
-    inline unsigned int mapFile(unsigned int file) const noexcept {
+    inline int mapFile(int file) const noexcept {
         return m_Flipped ? (Chess::Files - 1 - file) : file;
     }
 
     [[nodiscard]]
-    std::pair<unsigned int, unsigned int> mapMousePosToCoordinates(sf::Vector2i position) const noexcept {
-        const unsigned int rank = mapRank(position.y / m_SquareSize);
-        const unsigned int file = mapFile((position.x - m_EvaluationBarWidth) / m_SquareSize);
-
-        return std::make_pair(rank, file);
+    std::pair<int, int> mapMousePosToCoordinates(sf::Vector2i position) const noexcept {
+        return std::make_pair(
+            mapRank(position.y / m_SquareSize),
+            mapFile((position.x - m_EvaluationBarWidth) / m_SquareSize)
+        );
     }
 
     void joinThreads();
@@ -135,8 +140,8 @@ private:
     void updateEvaluation();
 
     void initUserInterface(sf::Vector2u windowSize);
-    sf::VertexArray generateCheckerboardMesh(float squareSize, float offset_x, const sf::Color* colors);
 
+    void renderCheckerboard(sf::RenderTarget& target) const;
     void renderRanksAndFiles(sf::RenderTarget& target) const;
     void renderSquareHighlight(sf::RenderTarget& target, uint8_t square, sf::Color color) const;
     void renderPiece(sf::RenderTarget& target, Chess::Piece piece, float x, float y, float angle = 0.f) const;
@@ -180,8 +185,6 @@ private:
 
     GameState m_InspectionEntryState;
 
-    sf::VertexArray m_CheckerboardMesh;
-
     sf::Vector2i m_LastMousePosition;
 
     // Multithreading
@@ -198,6 +201,7 @@ private:
     bool m_InspectionMode{false};
 
     // UI / UX
+    std::unique_ptr<Theme> m_Theme;
     std::vector<PieceMoveAnim> m_PieceAnimations;
     std::vector<Button> m_Buttons;
     std::vector<Arrow> m_Arrows;

@@ -16,7 +16,7 @@ struct BookEntry {
 
 std::vector<BookEntry> g_BookEntries;
 
-void AddLine(const std::string& moves) {
+static void AddLine(const std::string& moves) {
     Chess::Board board;
 
     Chess::PieceColor sideToMove = board.LoadFromFen(Chess::DefaultFEN);
@@ -74,7 +74,7 @@ void AddLine(const std::string& moves) {
     }
 }
 
-void AddAllOpenings() {
+static void AddAllOpenings() {
     // ========================================
     // KING'S PAWN OPENINGS (1.e4) - EXPANDED
     // ========================================
@@ -478,12 +478,12 @@ int main() {
     g_BookEntries.erase(last, g_BookEntries.end());
 
     // Calculate optimal column count based on sqrt of number of entries
-    const size_t numEntries = g_BookEntries.size();
-    const size_t colSize = static_cast<size_t>(std::sqrt(numEntries));
+    const std::size_t numEntries = g_BookEntries.size();
+    const std::size_t colSize = static_cast<std::size_t>(std::sqrt(numEntries));
 
-    std::cout << "{\n";
+    std::cout << "{" << std::endl;
 
-    for (size_t i = 0; i < numEntries; ++i) {
+    for (std::size_t i = 0; i < numEntries; ++i) {
         const auto& e = g_BookEntries[i];
 
         // Print indentation at start of row
@@ -504,16 +504,16 @@ int main() {
 
         // Newline at end of row or at the end
         if ((i + 1) % colSize == 0 || i == numEntries - 1) {
-            std::cout << "\n";
+            std::cout << std::endl;
         }
     }
 
-    std::cout << "};\n\n";
+    std::cout << "};" << std::endl << std::endl;
 
     // Print statistics
-    std::cerr << "Opening book generated successfully!\n";
-    std::cerr << "Total entries: " << numEntries << "\n";
-    std::cerr << "Entries per row: " << colSize << "\n";
+    std::cerr << "Opening book generated successfully!" << std::endl;
+    std::cerr << "Total entries: " << numEntries << std::endl;
+    std::cerr << "Entries per row: " << colSize << std::endl;
 
     return 0;
 }
