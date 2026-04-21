@@ -109,19 +109,27 @@ The GUI is built using **SFML** and provides:
 
 * drag-and-drop and click-based piece movement
 * legal move highlighting with capture indicators
-* smooth piece animations
+* smooth piece animations with piece tilting during drag
 * evaluation bar visualization with live updating
-* game over detection (checkmate, stalemate, draws)
-* particle effects for game endings
+* game over detection (checkmate, stalemate, draws) with particle effects
 * sound effects for moves, captures, checks, and special moves
 * board flipping and reset controls
-* arrow drawing (right-click drag) and square markers (right-click)
+* **switchable themes** (Lichess, Chesscom) with distinct visual and behavioral differences
+* **arrow drawing** (right-click drag between squares, toggleable by redrawing)
+* **square markers** (right-click on square to toggle highlight)
 * promotion menu with piece selection
 * inspection mode for position analysis
-* configurable engine parameters (think time, search depth, opening book, pondering)
+* configurable engine parameters (think time, search depth, opening book, pondering, catch-all mode)
 * FEN string copy and paste support (`Ctrl + C` / `Ctrl + V`)
+* tooltip hints on button hover
 
 This interface allows direct interaction with the engine without external tools.
+
+## Theme System
+
+The engine features a **runtime-switchable theme system** that replicates the look and feel of popular chess platforms like `Lichess` and `Chesscom`.
+
+Themes control both visual appearance (colors, rendering styles) and behavioral differences (hover feedback, drag indicators), allowing faithful recreation of different platform experiences. The system is designed for easy extension - new themes can be added by inheriting from the `Theme` base class.
 
 ---
 
@@ -166,6 +174,7 @@ The engine implements all **mandatory UCI commands** plus additional configurati
 * **Static exchange evaluation (SEE)** for accurate capture analysis
 * **Layered pruning techniques** to reduce explored nodes
 * **Opening book** with 3500+ positions from major opening lines
+* **Runtime-switchable theme system** with behavioral polymorphism for theme-specific UX
 * **Modular architecture** separating engine logic from interface layers
 
 ---
@@ -240,7 +249,7 @@ Chess pieces as a **texture atlas**:
 Icons in a **horizontal sprite sheet**:
 
 ```
-[ Flip | Engine | Cancel | Reset | Up | Down | Own Book (on) | Own Book (off) | Ponder (on) | Ponder (off) | CatchAll (on) | CatchAll (off) | Inspection (on) | Inspection (off) ]
+[Flip | Engine | Cancel | Reset | Up | Down | Own Book On | Own Book Off | Ponder On | Ponder Off | CatchAll On | CatchAll Off | Inspection On | Inspection Off]
 ```
 
 ## Fonts
