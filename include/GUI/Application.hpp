@@ -163,7 +163,7 @@ private:
     uint16_t m_EngineThinkTimeMs{250};
     uint8_t m_EvaluationDepth{12};
     bool m_UseOwnBook{true};
-    bool m_Ponder{true};
+    bool m_Ponder{false};
 
     // Invariant: only valid when not equal to `Chess::NullPos`
     uint8_t m_SelectedPiece{Chess::NullPos};
