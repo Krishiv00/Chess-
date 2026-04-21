@@ -57,13 +57,14 @@ Enhancements include:
 * null-move pruning
 * probcut
 * reverse futility pruning
-* late move reductions
+* late move reductions (LMR) with history-based reduction adjustments
 * late move pruning
 * singular extensions
-* quiescence search
-* move ordering using history and killer move heuristics
-* transposition table lookups
-* pondering
+* quiescence search with delta pruning
+* move ordering using history heuristics, killer moves, and transposition table entries
+* transposition table with depth-preferred replacement
+* repetition detection
+* pondering (background thinking)
 
 These techniques significantly reduce the search space and improve playing strength.
 
@@ -75,14 +76,30 @@ Positions are scored using a **tapered evaluation model** that smoothly interpol
 
 Key factors include:
 
+* material balance with piece-square tables
+* king safety (pawn shield, king danger from attacking pieces)
+* pawn structure (passed pawns, doubled pawns, isolated pawns, connected passed pawns)
+* piece mobility (knights, bishops, rooks, queens)
+* endgame-specific evaluation (king centralization, forcing opponent king to corners)
+* rook placement (open and semi-open files)
+* bishop pair bonus
 * tempo bonus
-* material balance
-* piece-square tables
-* pawn structure
-* king safety
-* piece mobility
 
 Evaluation is symmetric and always calculated relative to the side to move.
+
+---
+
+# Move Generation
+
+The engine implements **fully legal move generation** with proper handling of:
+
+* pinned pieces
+* discovered checks
+* en passant captures
+* castling legality
+* check detection integrated during move generation
+
+All special moves are correctly flagged for search and evaluation purposes.
 
 ---
 
@@ -91,11 +108,17 @@ Evaluation is symmetric and always calculated relative to the side to move.
 The GUI is built using **SFML** and provides:
 
 * drag-and-drop and click-based piece movement
-* legal move highlighting
-* smooth piece animation
-* evaluation bar visualization
-* sound effects for moves and captures
+* legal move highlighting with capture indicators
+* smooth piece animations
+* evaluation bar visualization with live updating
+* game over detection (checkmate, stalemate, draws)
+* particle effects for game endings
+* sound effects for moves, captures, checks, and special moves
 * board flipping and reset controls
+* arrow drawing (right-click drag) and square markers (right-click)
+* promotion menu with piece selection
+* inspection mode for position analysis
+* configurable engine parameters (think time, search depth, opening book, pondering)
 * FEN string copy and paste support (`Ctrl + C` / `Ctrl + V`)
 
 This interface allows direct interaction with the engine without external tools.
@@ -111,26 +134,26 @@ Features:
 * full UCI protocol support
 * compatibility with external GUIs (Arena, Cute Chess, etc.)
 * efficient command parsing and move handling
+* configurable hash table size
+* opening book support
+* pondering support
+* time control management with move overhead compensation
 * shared search and evaluation logic with the GUI
 
 This enables engine testing, benchmarking, and engine-vs-engine play.
 
-### Supported Core Commands
+### Supported Commands
 
-The engine implements all **mandatory commands defined by the Universal Chess Interface**, ensuring compatibility with standard GUIs.
+The engine implements all **mandatory UCI commands** plus additional configuration options:
 
 * `uci` - initialize UCI mode
 * `isready` - synchronization check
 * `ucinewgame` - reset internal state
 * `position` - set up board state (FEN / move list)
-* `go` - start search (supports standard parameters and `perft`)
+* `go` - start search (supports time controls, depth, movetime, perft, infinite)
 * `stop` - halt search
 * `quit` - terminate engine
-
-### Additional Features
-
-* `setoption` - configure engine parameters
-* `flip` - manually flip the side to move (non-standard extension)
+* `setoption` - configure engine parameters (Hash, Ponder, OwnBook, Move Overhead, Minimum Thinking Time, Contempt, CatchAll)
 
 ---
 
@@ -138,25 +161,52 @@ The engine implements all **mandatory commands defined by the Universal Chess In
 
 * **Magic bitboards** for constant-time sliding piece attack generation
 * **Incremental Zobrist hashing** for fast position hashing during search
+* **Check detection integration** - moves are flagged with check status during generation
+* **Separate pawn hash table** for cached pawn structure evaluation
+* **Static exchange evaluation (SEE)** for accurate capture analysis
 * **Layered pruning techniques** to reduce explored nodes
+* **Opening book** with 3500+ positions from major opening lines
 * **Modular architecture** separating engine logic from interface layers
 
 ---
 
 # Requirements
 
-* **C++2x**
-* **SFML 3.x** (for GUI)
+* **C++20 or later**
+* **SFML 3.x** (for GUI only)
+
+---
+
+# Building
+
+The project includes separate executables for GUI and UCI interfaces.
+
+**GUI**: Requires SFML 3.x linked with the Chess engine source files.
+
+**UCI**: Requires only standard C++ (no external dependencies).
+
+---
+
+# Testing
+
+The engine includes a comprehensive test suite (`tests.cpp`) covering:
+
+* Perft validation across many standard test positions
+* Check detection accuracy
+* Pin handling
+* En passant edge cases
+* Castling legality
+* Draw detection (50-move rule, threefold repetition, insufficient material)
+
+Run tests to verify correctness after modifications.
 
 ---
 
 # Assets
 
-The repository **does not include graphical or audio assets**.
+The GUI requires graphical and audio assets in a `Resources/` directory next to the executable.
 
-Users must supply their own assets inside a `Resources/` directory located next to the GUI executable.
-
-Expected directory structure:
+Expected structure:
 
 ```
 Resources/
@@ -176,51 +226,27 @@ Resources/
     └── Special Move.wav
 ```
 
----
-
 ## Piece Texture
 
-The chess pieces must be provided as a **texture atlas** with the layout:
+Chess pieces as a **texture atlas**:
 
 ```
 [ WP | WB | WN | WR | WQ | WK ]
 [ BP | BB | BN | BR | BQ | BK ]
 ```
 
-Each piece occupies an equal-sized cell.
-
----
-
 ## Icons
 
-Icons are stored in a **horizontal sprite sheet**:
+Icons in a **horizontal sprite sheet**:
 
 ```
-[ Flip | Engine | Cancel | Reset | Own Book (on) | Own Book (off) | Ponder (on) | Ponder (off) ]
+[ Flip | Engine | Cancel | Reset | Up | Down | Own Book (on) | Own Book (off) | Ponder (on) | Ponder (off) | CatchAll (on) | CatchAll (off) | Inspection (on) | Inspection (off) ]
 ```
-
-Each icon occupies an equal-sized cell.
-
----
 
 ## Fonts
 
-Provide any TrueType font (`.ttf`).
-
----
+Any TrueType font (`.ttf`).
 
 ## Sounds
 
-The engine expects the following files:
-
-```
-Capture.wav
-Check.wav
-Game End.wav
-Place1.wav
-Place2.wav
-Promotion.wav
-SpecialMove.wav
-```
-
-Custom sound effects may be used as long as filenames match.
+Audio files for game events (in `.wav` format).
