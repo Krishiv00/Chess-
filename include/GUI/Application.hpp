@@ -11,7 +11,7 @@
 
 #include "Engine/Chess.hpp"
 
-#include "GUI/Theme.hpp"
+#include "GUI/Themes.hpp"
 #include "GUI/SoundSystem.hpp"
 
 class Application final {
@@ -47,7 +47,7 @@ private:
 
         Popup() = default;
         
-        Popup(const std::string& info) : Info(info), Timer(1.f) {
+        Popup(const std::string& info) : Info(info), Timer(2.f) {
             for (char& c : Info) c = std::toupper(c);
         }
         
@@ -201,7 +201,8 @@ private:
     bool m_InspectionMode{false};
 
     // UI / UX
-    std::unique_ptr<Theme> m_Theme;
+    std::size_t m_CurrentThemeIdx{0};
+    std::unique_ptr<Themes::Theme> m_Theme{Themes::Factories[m_CurrentThemeIdx]()};
     std::vector<PieceMoveAnim> m_PieceAnimations;
     std::vector<Button> m_Buttons;
     std::vector<Arrow> m_Arrows;

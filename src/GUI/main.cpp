@@ -1,6 +1,6 @@
 #include "GUI/Launcher.hpp"
 
-int main(int, char**) {
+int main() {
     Launcher launcher({
         .WindowSize = 850u,
         .AspectRatio = 1.125f,

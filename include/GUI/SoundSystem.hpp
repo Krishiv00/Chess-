@@ -14,7 +14,6 @@ enum class Sfx {
     MoveSelf,
     MoveOpponent,
     SpecialMove,
-    BoardFlip = SpecialMove,
     Count
 };
 

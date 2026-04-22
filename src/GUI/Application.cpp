@@ -28,8 +28,6 @@ Application::Application() {
     m_Board.SetCatchAll(false);
 
     loadFen(Chess::DefaultFEN);
-
-    m_Theme = std::make_unique<ChesscomTheme>();
 }
 
 void Application::loadFen(const std::string& fen) {
@@ -66,20 +64,18 @@ void Application::SetTargetSize(sf::Vector2u size) {
 }
 
 void Application::initUserInterface(sf::Vector2u windowSize) {
-    const float margin = windowSize.x - (m_SquareSize * Chess::Ranks);
+    const float windowHeight = static_cast<float>(windowSize.y);
+    const float windowWidth = static_cast<float>(windowSize.x);
 
-    // allocate window space into 3 sections
-    // evaluation bar, chess board, button panel
-    const float Dist = 0.6f;
+    const float boardWidth = Chess::Files * m_SquareSize;
 
-    m_EvaluationBarWidth = margin * Dist;
-    m_PanelWidth = margin * (1.f - Dist);
+    m_EvaluationBarWidth = windowHeight * 0.075f;
+    m_PanelWidth = windowHeight * 0.05f;
 
-    const float padding_y = static_cast<float>(windowSize.y * 0.006f);
+    const float padding_y = windowHeight * 0.006f;
     const float padding_x = m_PanelWidth * 0.11f;
 
-    const float panelStartPos = static_cast<float>(windowSize.x) - m_PanelWidth;
-
+    const float panelStartPos = m_EvaluationBarWidth + boardWidth;
     const float buttonSize = m_PanelWidth - 2.f * padding_x;
 
     const float currentXPos = panelStartPos + padding_x;
@@ -94,7 +90,6 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
         0,
         [this](Button&) -> void {
             m_Flipped ^= true;
-            m_SfxPlayer.Play(Sfx::BoardFlip);
         },
         std::array<std::string, 2>{"Flip Board", ""}
     );
@@ -265,16 +260,14 @@ void Application::initUserInterface(sf::Vector2u windowSize) {
 
     // board reset / theme cycle button
     m_Buttons.emplace_back(
-        currentXPos, static_cast<float>(windowSize.y) - buttonSize - padding_y,
+        currentXPos, windowHeight - buttonSize - padding_y,
         buttonSize, buttonSize,
         3,
         [this](Button&) -> void {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
-                if (dynamic_cast<ChesscomTheme*>(m_Theme.get())) {
-                    m_Theme = std::make_unique<LichessTheme>();
-                } else {
-                    m_Theme = std::make_unique<ChesscomTheme>();
-                }
+                m_CurrentThemeIdx = (m_CurrentThemeIdx + 1) % Themes::Count;
+                m_Theme = Themes::Factories[m_CurrentThemeIdx]();
+                m_Popup = Popup("Theme: " + std::string(Themes::Names[m_CurrentThemeIdx]));
             } else {
                 m_PromotionSelectionActive = false;
                 loadFen(Chess::DefaultFEN);
@@ -466,7 +459,12 @@ void Application::HandleMouseMoved(sf::Vector2i position) {
             m_DragTilt = targetTilt;
         }
     } else {
-        const bool hoveringPanel = position.x > m_EvaluationBarWidth + m_SquareSize * Chess::Files;
+        const float panelLeft = m_EvaluationBarWidth + Chess::Files * m_SquareSize;
+
+        const bool hoveringPanel = (
+            position.x > panelLeft &&
+            position.x < panelLeft + m_PanelWidth
+        );
 
         Button* nowHovered = nullptr;
 
@@ -662,7 +660,11 @@ void Application::doMove(Chess::Move move, bool animate) {
 }
 
 void Application::onMouseButtonSignal(sf::Vector2i position, bool released) {
-    if (m_GameOver) return;
+    if (
+        m_GameOver ||
+        position.x < m_EvaluationBarWidth ||
+        position.x > m_EvaluationBarWidth + Chess::Files * m_SquareSize
+    ) return;
 
     const auto [rank, file] = mapMousePosToCoordinates(position);
     const uint8_t idx = Chess::To2DIndex(rank, file);
@@ -1717,7 +1719,7 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
         // panel mask (for fade effect)
         RenderQuad(
             target, Utils::ConvertAlpha(m_Theme->GetBackground(), 1.f - m_PanelBrightness),
-            sf::Vector2f(target.getSize().x - m_PanelWidth, 0.f),
+            sf::Vector2f(m_EvaluationBarWidth + Chess::Files * m_SquareSize, 0.f),
             sf::Vector2f(m_PanelWidth, target.getSize().y)
         );
 
