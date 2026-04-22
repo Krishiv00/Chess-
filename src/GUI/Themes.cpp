@@ -82,6 +82,11 @@ Themes::ChesscomGlass::ChesscomGlass() {
         sf::Color(37, 43, 55)
     };
 
+    m_EvaluationBar = {
+        sf::Color(190, 200, 220),
+        sf::Color(62, 72, 92)
+    };
+
     m_Particles = {
         sf::Color(105, 114, 131),
         sf::Color(37, 43, 55),
@@ -103,6 +108,11 @@ Themes::ChesscomBrown::ChesscomBrown() {
     m_Checkerboard = {
         sf::Color(237, 214, 176),
         sf::Color(184, 135, 98)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(237, 214, 176),
+        sf::Color(80, 52, 30)
     };
 
     m_Particles = {
@@ -128,6 +138,11 @@ Themes::ChesscomSky::ChesscomSky() {
         sf::Color(196, 216, 228)
     };
 
+    m_EvaluationBar = {
+        sf::Color(240, 248, 255),
+        sf::Color(60, 100, 130)
+    };
+
     m_Particles = {
         sf::Color(240, 241, 240),
         sf::Color(196, 216, 228),
@@ -151,6 +166,11 @@ Themes::Chesscom8Bit::Chesscom8Bit() {
         sf::Color(106, 155, 65)
     };
 
+    m_EvaluationBar = {
+        sf::Color(243, 243, 244),
+        sf::Color(72, 108, 44)
+    };
+
     m_Particles = {
         sf::Color(243, 243, 244),
         sf::Color(106, 155, 65),
@@ -171,6 +191,11 @@ Themes::ChesscomPurple::ChesscomPurple() {
     m_Checkerboard = {
         sf::Color(240, 241, 240),
         sf::Color(132, 118, 186)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(235, 230, 250),
+        sf::Color(88, 72, 138)
     };
 
     m_Particles = {
@@ -196,6 +221,11 @@ Themes::ChesscomLight::ChesscomLight() {
         sf::Color(168, 169, 168)
     };
 
+    m_EvaluationBar = {
+        sf::Color(225, 225, 225),
+        sf::Color(115, 115, 115)
+    };
+
     m_Particles = {
         sf::Color(216, 217, 216),
         sf::Color(168, 169, 168),
@@ -217,6 +247,11 @@ Themes::ChesscomDark::ChesscomDark() {
     m_Checkerboard = {
         sf::Color(144, 143, 141),
         sf::Color(110, 109, 107)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(195, 194, 192),
+        sf::Color(72, 71, 70)
     };
 
     m_Particles = {
@@ -242,6 +277,11 @@ Themes::ChesscomDarkBlue::ChesscomDarkBlue() {
         sf::Color(75, 115, 153)
     };
 
+    m_EvaluationBar = {
+        sf::Color(234, 233, 210),
+        sf::Color(85, 120, 158)
+    };
+
     m_Particles = {
         sf::Color(234, 233, 210),
         sf::Color(75, 115, 153),
@@ -263,6 +303,11 @@ Themes::ChesscomBubblegum::ChesscomBubblegum() {
     m_Checkerboard = {
         sf::Color(254, 255, 254),
         sf::Color(251, 217, 225)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(255, 245, 248),
+        sf::Color(140, 55, 78)
     };
 
     m_Particles = {
@@ -288,6 +333,11 @@ Themes::ChesscomCheckers::ChesscomCheckers() {
         sf::Color(48, 48, 48)
     };
 
+    m_EvaluationBar = {
+        sf::Color(248, 224, 136),
+        sf::Color(88, 58, 58)
+    };
+
     m_Particles = {
         sf::Color(199, 76, 81),
         sf::Color(48, 48, 48),
@@ -311,6 +361,11 @@ Themes::ChesscomOrange::ChesscomOrange() {
         sf::Color(209, 136, 21)
     };
 
+    m_EvaluationBar = {
+        sf::Color(250, 228, 174),
+        sf::Color(80, 44, 8)
+    };
+
     m_Particles = {
         sf::Color(250, 228, 174),
         sf::Color(209, 136, 21),
@@ -331,6 +386,11 @@ Themes::ChesscomRed::ChesscomRed() {
     m_Checkerboard = {
         sf::Color(245, 219, 195),
         sf::Color(187, 87, 70)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(245, 219, 195),
+        sf::Color(80, 28, 20)
     };
 
     m_Particles = {
@@ -356,6 +416,11 @@ Themes::ChesscomTan::ChesscomTan() {
         sf::Color(216, 164, 109)
     };
 
+    m_EvaluationBar = {
+        sf::Color(237, 203, 165),
+        sf::Color(72, 44, 18)
+    };
+
     m_Particles = {
         sf::Color(237, 203, 165),
         sf::Color(216, 164, 109),
@@ -376,6 +441,11 @@ Themes::ChesscomBlue::ChesscomBlue() {
     m_Checkerboard = {
         sf::Color(242, 246, 250),
         sf::Color(85, 150, 242)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(242, 246, 250),
+        sf::Color(55, 95, 175)
     };
 
     m_Particles = {
@@ -401,6 +471,11 @@ Themes::ChesscomPink::ChesscomPink() {
         sf::Color(236, 148, 164)
     };
 
+    m_EvaluationBar = {
+        sf::Color(248, 240, 243),
+        sf::Color(110, 38, 58)
+    };
+
     m_Particles = {
         sf::Color(245, 240, 241),
         sf::Color(236, 148, 164),
@@ -422,6 +497,11 @@ Themes::ChesscomTheMusical::ChesscomTheMusical() {
     m_Checkerboard = {
         sf::Color(215, 212, 212),
         sf::Color(128, 123, 118)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(220, 215, 225),
+        sf::Color(108, 88, 115)
     };
 
     m_Particles = {
@@ -523,6 +603,11 @@ Themes::LichessBlue::LichessBlue() {
         sf::Color(140, 162, 173)
     };
 
+    m_EvaluationBar = {
+        sf::Color(222, 227, 230),
+        sf::Color(105, 130, 148)
+    };
+
     m_Particles = {
         sf::Color(222, 227, 230),
         sf::Color(140, 162, 173),
@@ -544,6 +629,11 @@ Themes::LichessGreen::LichessGreen() {
     m_Checkerboard = {
         sf::Color(255, 255, 221),
         sf::Color(134, 166, 102)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(255, 255, 221),
+        sf::Color(72, 108, 52)
     };
 
     m_Particles = {
@@ -569,6 +659,11 @@ Themes::LichessDark::LichessDark() {
         sf::Color(135, 135, 135)
     };
 
+    m_EvaluationBar = {
+        sf::Color(200, 200, 200),
+        sf::Color(112, 112, 112)
+    };
+
     m_Particles = {
         sf::Color(167, 167, 167),
         sf::Color(135, 135, 135),
@@ -590,6 +685,11 @@ Themes::LichessPurple::LichessPurple() {
     m_Checkerboard = {
         sf::Color(159, 144, 176),
         sf::Color(125, 74, 141)
+    };
+
+    m_EvaluationBar = {
+        sf::Color(210, 200, 228),
+        sf::Color(118, 80, 142)
     };
 
     m_Particles = {
