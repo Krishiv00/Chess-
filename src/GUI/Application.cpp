@@ -69,9 +69,15 @@ void Application::SetTargetSize(sf::Vector2u size) {
         buttonSize, buttonSize,
         0,
         [this](ButtonPanel::Button&) -> void {
-            m_Flipped ^= true;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
+                m_SideToMove = Chess::InvertColor(m_SideToMove);
+                m_Board.FlipSideToMove();
+                updateEvaluation();
+            } else {
+                m_Flipped ^= true;
+            }
         },
-        std::array<std::string, 2>{"Flip Board", ""}
+        std::array<std::string, 2>{"Flip Board", "Flip Side"}
     ));
 
     currentYPos += buttonSize + padding_y * 2.f;
@@ -335,7 +341,8 @@ bool Application::LoadResources(const std::filesystem::path& root) {
 
 void Application::HandleKeyPressed(sf::Keyboard::Scancode key) {
     if (key == sf::Keyboard::Scancode::V) {
-        if (!m_PromotionSelectionActive && sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::LControl)) {
+            m_PromotionSelectionActive = false;
             loadFen(sf::Clipboard::getString());
         }
     }

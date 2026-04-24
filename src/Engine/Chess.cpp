@@ -270,7 +270,6 @@ public:
     }
 };
 
-
 class PawnTranspositionTable {
 public:
     struct PawnTTEntry {
@@ -2717,17 +2716,14 @@ float Board::GetConfidence(PieceColor sideToMove, int thinkTimeMS) const {
     });
 
     int deepestScore = 0;
-
-    int depth = 1;
+    int depth = 0;
 
     do {
-        const int score = negamax(depth, -INF, INF, sideToMove);
+        const int score = negamax(++depth, -INF, INF, sideToMove);
 
         if (score != SearchCancelScore && score != -SearchCancelScore) {
             deepestScore = score;
         }
-
-        ++depth;
     } while (!SearchContext::Cancelled.load(std::memory_order_relaxed));
 
     timerThread.join();
