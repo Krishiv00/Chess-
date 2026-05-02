@@ -63,11 +63,11 @@ namespace Chess {
     };
 
     constexpr inline const uint16_t PieceValues[] = {
-        100, 320, 330, 500, 900, 0
+        100, 275, 300, 350, 620, 0
     };
 
     constexpr inline const uint16_t PieceEgValues[] = {
-        140, 285, 310, 590, 950, 0
+        100, 400, 300, 600, 1000, 0
     };
 
     struct Piece {
