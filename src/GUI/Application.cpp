@@ -1234,9 +1234,9 @@ void Application::Render(sf::RenderTarget& target, sf::Vector2i mousePosition) c
             m_Flipped, m_Theme->GetEvaluationBar()
         );
 
-        if (m_InspectionMode) {
+        if (m_InspectionModeOverlay_t > 0.f) {
             Utils::RenderQuad(
-                target, sf::Color(120, 120, 120, 90 * m_InspectionModeOverlay_t),
+                target, sf::Color(255, 245, 255, 38 * m_InspectionModeOverlay_t),
                 sf::Vector2f(m_EvaluationBarWidth, 0.f), sf::Vector2f(Chess::Files, Chess::Ranks) * m_SquareSize
             );
         }
